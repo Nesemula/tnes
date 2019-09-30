@@ -48,7 +48,7 @@ void write_memory(unsigned short address, unsigned char data) {
 		//ppu_write(address & 0x00FF, data);
 		return;
 	}
-	if (address == 0x4015 || address == 0x4016 || address == 0x4017) {
+	if (address == 0x4011 || address == 0x4015 || address == 0x4016 || address == 0x4017) {
 		printf("  write_memory %04X -> \033[1;45mCTRL\033[0m %04X -> %02X\n", address, address & 0x000F, data);
 getchar();
 		return;

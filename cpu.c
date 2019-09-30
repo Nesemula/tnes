@@ -78,14 +78,14 @@ static void reset(void) {
 static void fetch_opcode(void) {
 #if DBG
 	if (!dbg++) {
-		A = 0xa9;
-		X = 0xff;
+		A = 0xaa;
+		X = 0x0f;
 		Y = 0x01;
 		S = 0x00;
-		ungroup_status_flags(0x00);
+		ungroup_status_flags(0x81);
 	}
-	unsigned char op = 0xc0;
-	dbg_data = 0x80;
+	unsigned char op = 0x35;
+	dbg_data = 0x86;
 #else
 	if (NMI_occured) {
 		NMI_occured = 0;
@@ -94,7 +94,6 @@ static void fetch_opcode(void) {
 		//op = 0x00;
 		current = BRK_stack;
 		step = 0;
-getchar();
 		return;
 	}
 	unsigned char op = read_memory(PC);
@@ -111,6 +110,7 @@ getchar();
 		case 0x18: current = CLC_implied;     break;
 		case 0x20: current = JSR_absolute;    break;
 		case 0x25: current = AND_zeropage;    break;
+		case 0x26: current = ROL_zeropage;    break;
 		case 0x29: current = AND_immediate;   break;
 		case 0x2A: current = ROL_accumulator; break;
 		case 0x30: current = BMI_relative;    break;
@@ -122,13 +122,17 @@ getchar();
 		case 0x49: current = EOR_immediate;   break;
 		case 0x4A: current = LSR_accumulator; break;
 		case 0x4C: current = JMP_absolute;    break;
-		//case 0x58: current = CLI_implied;     break;
+		case 0x50: current = BVC_relative;    break;
+		case 0x58: current = CLI_implied;     break;
 		case 0x60: current = RTS_stack;       break;
 		case 0x65: current = ADC_zeropage;    break;
 		case 0x66: current = ROR_zeropage;    break;
 		case 0x68: current = PLA_stack;       break;
 		case 0x69: current = ADC_immediate;   break;
-		//case 0x6A: current = ROR_accumulator; break;
+		case 0x6A: current = ROR_accumulator; break;
+		case 0x6C: current = JMP_indirect;    break;
+		case 0x70: current = BVS_relative;    break;
+		case 0x76: current = ROR_zeropageX;   break;
 		case 0x78: current = SEI_implied;     break;
 		case 0x84: current = STY_zeropage;    break;
 		case 0x85: current = STA_zeropage;    break;
@@ -156,23 +160,25 @@ getchar();
 		case 0xB1: current = LDA_indirectY;   break;
 		case 0xB4: current = LDY_zeropageX;   break;
 		case 0xB5: current = LDA_zeropageX;   break;
-		//case 0xB8: current = CLV_implied;     break;
-		//case 0xBA: current = TSX_implied;     break;
+		case 0xB8: current = CLV_implied;     break;
+		case 0xBA: current = TSX_implied;     break;
 		case 0xBD: current = LDA_absoluteX;   break;
-		//case 0xC0: current = CPY_immediate;   break;
+		case 0xC0: current = CPY_immediate;   break;
 		case 0xC6: current = DEC_zeropage;    break;
 		case 0xC8: current = INY_implied;     break;
 		case 0xC9: current = CMP_immediate;   break;
 		case 0xCA: current = DEX_implied;     break;
 		case 0xD0: current = BNE_relative;    break;
-		case 0xD6: current = DEC_zeropage;    break;
+		case 0xD6: current = DEC_zeropageX;   break;
 		case 0xD8: current = CLD_implied;     break;
-		//case 0xE0: current = CPX_immediate;   break;
+		case 0xE0: current = CPX_immediate;   break;
+		case 0xE6: current = INC_zeropage;    break;
 		case 0xE8: current = INX_implied;     break;
-		//case 0xE9: current = SBC_immediate;   break;
-		//case 0xEA: current = NOP_implied;     break;
+		case 0xE9: current = SBC_immediate;   break;
+		case 0xEC: current = CPX_absolute;    break;
+		case 0xEA: current = NOP_implied;     break;
 		case 0xF0: current = BEQ_relative;    break;
-		//case 0xF8: current = SED_implied;     break;
+		case 0xF8: current = SED_implied;     break;
 		default  : current = ERR_illegal;     break;
 	}
 }

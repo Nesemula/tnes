@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "common.h"
@@ -5,15 +6,15 @@
 #define prg_size 0x4000
 #define chr_size 0x2000
 
-unsigned char *PRG_DATA;
-unsigned char *CHR_DATA;
-int prg_banks;
-int chr_banks;
+uint8_t *PRG_DATA;
+uint8_t *CHR_DATA;
+uint8_t prg_banks;
+uint8_t chr_banks;
 
-static void calculate_crc32(unsigned char *data, unsigned long length) {
-	unsigned long crc = 0xFFFFFFFF;
+static void calculate_crc32(uint8_t *data, size_t length) {
+	uint32_t crc = 0xFFFFFFFF;
 
-	for (unsigned int i = 0; i < length; i++) {
+	for (size_t i = 0; i < length; i++) {
 		crc ^= data[i];
 
 		for (int i = 0; i < 8; i++) {
@@ -23,14 +24,14 @@ static void calculate_crc32(unsigned char *data, unsigned long length) {
 				crc >>= 1;
 		}
 	}
-	printf("CRC32 %08lX\n", ~crc & 0xFFFFFFFF);
+	printf("CRC32 %08X\n", ~crc);
 }
 
 void load_ROM(const char *file_name) {
 	FILE *file;
-	unsigned char header[16]; // iNES header info
-	unsigned long int file_size;
-	unsigned int invalid = 0; // basic header and file size validation
+	uint8_t header[16]; // iNES header info
+	size_t file_size;
+	int invalid = 0; // basic header and file size validation
 
 	file = fopen(file_name, "rb");
 	if (!file) {

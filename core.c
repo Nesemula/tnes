@@ -2,7 +2,7 @@
 #include "common.h"
 
 int main(int argc, char *argv[]) {
-	load_ROM(argc > 1 ? argv[1] : "donkey_kong.nes");
+	load_ROM(argc > 1 ? argv[1] : "donkeykong.nes");
 	initialize_display();
 	printf("T-NES\n");
 	//for (int i = 0; i < 25; i++)
