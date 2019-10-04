@@ -13,10 +13,6 @@
 #define effective_address_hi effective_addr.part.high
 #define effective_address_lo effective_addr.part.low
 
-#define INDIRECT  indirect_addr.full
-#define INDIRECTH indirect_addr.part.high
-#define INDIRECTL indirect_addr.part.low
-
 #define   NMI_VECTOR 0xFFFA
 #define RESET_VECTOR 0xFFFC
 #define   IRQ_VECTOR 0xFFFE
@@ -37,12 +33,13 @@ uint8_t Y = 0x00;
 uint8_t S = 0x00;
 address program_counter;
 
-bool status_n = false;
-bool status_v = false;
-bool status_d = false;
-bool status_i = false;
-bool status_z = false;
-bool status_c = false;
+bool flag_n = false;
+bool flag_v = false;
+bool flag_b = false;
+bool flag_d = false;
+bool flag_i = false;
+bool flag_z = false;
+bool flag_c = false;
 
 int DMA_occured = 0;
 int DMA_address = 0;
@@ -61,6 +58,8 @@ void update_PC(void) {
 // DEBUG
 int dbg = 0;
 uint8_t dbg_data;
+uint8_t IR;
+unsigned long long counter = 0;
 
 #include "opcode.c"
 
@@ -71,25 +70,27 @@ static void reset(void) {
 	printf("\nreset %02X \033[1;33m %s \033[0m %s\n", op, mnemonic[op], addressing[op]);
 	read_memory(PC);
 	set_PC(PC + 1);
+	flag_b = false;
 	step = 0;
 	current = BRK_stack;
 }
 
 static void fetch_opcode(void) {
 #if DBG
+	unsigned char op = 0x24;
 	if (!dbg++) {
 		A = 0xaa;
-		X = 0x0f;
-		Y = 0x01;
+		X = 0xff;
+		Y = 0xff;
 		S = 0x00;
 		ungroup_status_flags(0x81);
 	}
-	unsigned char op = 0x35;
-	dbg_data = 0x86;
+	else  op = 0x24;
+	dbg_data = 0x11;
 #else
 	if (NMI_occured) {
 		NMI_occured = 0;
-		printf("interrrupt ->\033[1;33m NMI \033[0m\n");
+		printf("\ninterrupt ->\033[1;33m NMI \033[0m\n");
 		vector = NMI_VECTOR;
 		//op = 0x00;
 		current = BRK_stack;
@@ -98,31 +99,47 @@ static void fetch_opcode(void) {
 	}
 	unsigned char op = read_memory(PC);
 #endif
+	IR = op;
 	set_PC(PC + 1);
 	printf("\nfetch %02X \033[1;33m %s \033[0m %s\n", op, mnemonic[op], addressing[op]);
 	step = 0;
 	switch (op) {
 		case 0x05: current = ORA_zeropage;    break;
 		case 0x06: current = ASL_zeropage;    break;
+		case 0x08: current = PHP_stack;       break;
 		case 0x09: current = ORA_immediate;   break;
 		case 0x0A: current = ASL_accumulator; break;
+		case 0x0D: current = ORA_absolute;    break;
+		case 0x0E: current = ASL_absolute;    break;
 		case 0x10: current = BPL_relative;    break;
+		case 0x11: current = ORA_indirectY;   break;
+		case 0x15: current = ORA_zeropageX;   break;
 		case 0x18: current = CLC_implied;     break;
+		case 0x1D: current = ORA_absoluteX;   break;
 		case 0x20: current = JSR_absolute;    break;
+		case 0x24: current = BIT_zeropage;    break;
 		case 0x25: current = AND_zeropage;    break;
 		case 0x26: current = ROL_zeropage;    break;
+		case 0x28: current = PLP_stack;       break;
 		case 0x29: current = AND_immediate;   break;
 		case 0x2A: current = ROL_accumulator; break;
+		case 0x2C: current = BIT_absolute;    break;
+		case 0x2D: current = AND_absolute;    break;
 		case 0x30: current = BMI_relative;    break;
 		case 0x35: current = AND_zeropageX;   break;
+		case 0x36: current = ROL_zeropageX;   break;
 		case 0x38: current = SEC_implied;     break;
+		case 0x3E: current = ROL_absoluteX;   break;
+		case 0x40: current = RTI_stack;       break;
 		case 0x45: current = EOR_zeropage;    break;
 		case 0x46: current = LSR_zeropage;    break;
 		case 0x48: current = PHA_stack;       break;
 		case 0x49: current = EOR_immediate;   break;
 		case 0x4A: current = LSR_accumulator; break;
 		case 0x4C: current = JMP_absolute;    break;
+		case 0x4D: current = EOR_absolute;    break;
 		case 0x50: current = BVC_relative;    break;
+		case 0x56: current = LSR_zeropageX;   break;
 		case 0x58: current = CLI_implied;     break;
 		case 0x60: current = RTS_stack;       break;
 		case 0x65: current = ADC_zeropage;    break;
@@ -131,21 +148,33 @@ static void fetch_opcode(void) {
 		case 0x69: current = ADC_immediate;   break;
 		case 0x6A: current = ROR_accumulator; break;
 		case 0x6C: current = JMP_indirect;    break;
+		case 0x6D: current = ADC_absolute;    break;
+		case 0x6E: current = ROR_absolute;    break;
 		case 0x70: current = BVS_relative;    break;
+		case 0x71: current = ADC_indirectY;   break;
+		case 0x75: current = ADC_zeropageX;   break;
 		case 0x76: current = ROR_zeropageX;   break;
 		case 0x78: current = SEI_implied;     break;
+		case 0x79: current = ADC_absoluteY;   break;
+		case 0x7D: current = ADC_absoluteX;   break;
+		case 0x7E: current = ROR_absoluteX;   break;
 		case 0x84: current = STY_zeropage;    break;
 		case 0x85: current = STA_zeropage;    break;
 		case 0x86: current = STX_zeropage;    break;
 		case 0x88: current = DEY_implied;     break;
 		case 0x8A: current = TXA_implied;     break;
+		case 0x8C: current = STY_absolute;    break;
 		case 0x8D: current = STA_absolute;    break;
 		case 0x8E: current = STX_absolute;    break;
 		case 0x90: current = BCC_relative;    break;
 		case 0x91: current = STA_indirectY;   break;
+		case 0x94: current = STY_zeropageX;   break;
 		case 0x95: current = STA_zeropageX;   break;
+		case 0x96: current = STX_zeropageY;   break;
 		case 0x98: current = TYA_implied;     break;
+		case 0x99: current = STA_absoluteY;   break;
 		case 0x9A: current = TXS_implied;     break;
+		case 0x9D: current = STA_absoluteX;   break;
 		case 0xA0: current = LDY_immediate;   break;
 		case 0xA2: current = LDX_immediate;   break;
 		case 0xA4: current = LDY_zeropage;    break;
@@ -154,31 +183,51 @@ static void fetch_opcode(void) {
 		case 0xA8: current = TAY_implied;     break;
 		case 0xA9: current = LDA_immediate;   break;
 		case 0xAA: current = TAX_implied;     break;
+		case 0xAC: current = LDY_absolute;    break;
 		case 0xAD: current = LDA_absolute;    break;
 		case 0xAE: current = LDX_absolute;    break;
 		case 0xB0: current = BCS_relative;    break;
 		case 0xB1: current = LDA_indirectY;   break;
 		case 0xB4: current = LDY_zeropageX;   break;
 		case 0xB5: current = LDA_zeropageX;   break;
+		case 0xB6: current = LDX_zeropageY;   break;
 		case 0xB8: current = CLV_implied;     break;
+		case 0xB9: current = LDA_absoluteY;   break;
 		case 0xBA: current = TSX_implied;     break;
+		case 0xBC: current = LDY_absoluteX;   break;
 		case 0xBD: current = LDA_absoluteX;   break;
+		case 0xBE: current = LDX_absoluteY;   break;
 		case 0xC0: current = CPY_immediate;   break;
+		case 0xC4: current = CPY_zeropage;    break;
+		case 0xC5: current = CMP_zeropage;    break;
 		case 0xC6: current = DEC_zeropage;    break;
 		case 0xC8: current = INY_implied;     break;
 		case 0xC9: current = CMP_immediate;   break;
 		case 0xCA: current = DEX_implied;     break;
+		case 0xCD: current = CMP_absolute;    break;
+		case 0xCE: current = DEC_absolute;    break;
 		case 0xD0: current = BNE_relative;    break;
+		case 0xD5: current = CMP_zeropageX;   break;
 		case 0xD6: current = DEC_zeropageX;   break;
 		case 0xD8: current = CLD_implied;     break;
+		case 0xD9: current = CMP_absoluteY;   break;
+		case 0xDD: current = CMP_absoluteX;   break;
+		case 0xDE: current = DEC_absoluteX;   break;
 		case 0xE0: current = CPX_immediate;   break;
+		case 0xE4: current = CPX_zeropage;    break;
+		case 0xE5: current = SBC_zeropage;    break;
 		case 0xE6: current = INC_zeropage;    break;
 		case 0xE8: current = INX_implied;     break;
 		case 0xE9: current = SBC_immediate;   break;
-		case 0xEC: current = CPX_absolute;    break;
 		case 0xEA: current = NOP_implied;     break;
+		case 0xEC: current = CPX_absolute;    break;
+		case 0xEE: current = INC_absolute;    break;
 		case 0xF0: current = BEQ_relative;    break;
+		case 0xF5: current = SBC_zeropageX;   break;
+		case 0xF6: current = INC_zeropageX;   break;
 		case 0xF8: current = SED_implied;     break;
+		case 0xFD: current = SBC_absoluteX;   break;
+		case 0xFE: current = INC_absoluteX;   break;
 		default  : current = ERR_illegal;     break;
 	}
 }
@@ -190,19 +239,20 @@ void cpu_dma(unsigned char base_address) {
 
 void cpu_interrupt(void) {
 	NMI_occured = 1;
+	flag_b = false;
 //opcode *x = fetch_opcode;
 //ERR_illegal[0] = x;
 }
 
-unsigned long long counter = 0;
 inline void cpu_exec(void) {
 	update_PC();
 	//if (DMA_occured) fetch_opcode();
 	//else
 	current[step++]();
 	uint8_t P = group_status_flags();
-	printf(">> A %02X, X %02X, Y %02X, S %02X, P %02X, PC %04X, %c%c%c%c%c%c%c%c #%llu\n", A, X, Y, S, P, PC,
+	0&&printf(">> A %02X, X %02X, Y %02X, S %02X, P %02X, PC %04X, %c%c%c%c%c%c%c%c #%llu\n", A, X, Y, S, P, PC,
 		P & 0x80 ? 'n' : '.', P & 0x40 ? 'v' : '.', P & 0x20 ? 'x' : '.', P & 0x10 ? 'b' : '.',
 			P & 0x08 ? 'd' : '.', P & 0x04 ? 'i' : '.', P & 0x02 ? 'z' : '.', P & 0x01 ? 'c' : '.', ++counter);
+	counter++;
 }
 

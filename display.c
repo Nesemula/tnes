@@ -70,7 +70,7 @@ static void SetSDLIcon(SDL_Window* window) {
 void initialize_display(void) {
 	pthread_create(&tid, NULL, &thread_sdl, NULL);
 }
-
+int z = 0;
 void display_frame(unsigned char *frame) {
 	for (int i = 0; i < 0xF000; i++) {
 		int t = i * 4;
@@ -80,8 +80,9 @@ void display_frame(unsigned char *frame) {
 		pix[t + 2] = color;
 		pix[t + 3] = color;
 	}
+	SDL_Delay(8);
 	SDL_Event sdlevent;
-	sdlevent.type = SDL_AUDIODEVICEREMOVED;
+	sdlevent.type = SDL_TEXTINPUT;
 	SDL_PushEvent(&sdlevent);
 }
 
@@ -146,27 +147,30 @@ void* thread_sdl(void *arg) {
 	sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
 	SDL_SetRenderTarget(renderer, sdlTexture);
-	SDL_Event event;
 
-	while (1) {
-		SDL_PollEvent(&event);
-		if (event.type == SDL_QUIT)
-			break;
-		if (event.type == SDL_AUDIODEVICEREMOVED)
-		{
-			//generate_noise();
+	int go_on = 1;
+	while (go_on) {
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) {
 
-			//upscale();
+			if (event.type == SDL_QUIT) {
+				go_on = 0;
+				break;
+			}
+			if (event.type == SDL_TEXTINPUT)
+			{
+				//generate_noise();
 
-			//SDL_UpdateTexture(sdlTexture, NULL, pixz, 512 * 4);
-			SDL_UpdateTexture(sdlTexture, NULL, pix, 256 * 4);
-			SDL_RenderClear(renderer);
-			SDL_RenderCopy(renderer, sdlTexture, NULL, NULL);
-			SDL_RenderPresent(renderer);
-			//SDL_Delay(30);
-		}
-	} 
+				//upscale();
 
+				//SDL_UpdateTexture(sdlTexture, NULL, pixz, 512 * 4);
+				SDL_UpdateTexture(sdlTexture, NULL, pix, 256 * 4);
+				SDL_RenderClear(renderer);
+				SDL_RenderCopy(renderer, sdlTexture, NULL, NULL);
+				SDL_RenderPresent(renderer);
+			}
+		} 
+	}
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyTexture(sdlTexture);
 	SDL_DestroyWindow(sdlWindow);

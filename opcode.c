@@ -6,93 +6,93 @@ static uint8_t tmp_data;
 
 /* Auxiliary functions */
 inline static void update_flags_ZN(uint8_t reg) {
-	status_n = (reg & 0x80);
-	status_z = !reg;
+	flag_n = (reg & 0x80);
+	flag_z = !reg;
 }
 
 inline static uint8_t group_status_flags(void) {
-	uint8_t p = 0x30;
-	if (status_n) p |= 0x80;
-	if (status_v) p |= 0x40;
-	if (status_d) p |= 0x08;
-	if (status_i) p |= 0x04;
-	if (status_z) p |= 0x02;
-	if (status_c) p |= 0x01;
+	uint8_t p = 0x20;
+	if (flag_n) p |= 0x80;
+	if (flag_v) p |= 0x40;
+	if (flag_b) p |= 0x10;
+	if (flag_d) p |= 0x08;
+	if (flag_i) p |= 0x04;
+	if (flag_z) p |= 0x02;
+	if (flag_c) p |= 0x01;
 	return p;
 }
 
 inline static void ungroup_status_flags(uint8_t p) {
-	status_n = p & 0x80;
-	status_v = p & 0x40;
-	status_d = p & 0x08;
-	status_i = p & 0x04;
-	status_z = p & 0x02;
-	status_c = p & 0x01;
+	flag_n = p & 0x80;
+	flag_v = p & 0x40;
+	// flag B is not updated
+	flag_d = p & 0x08;
+	flag_i = p & 0x04;
+	flag_z = p & 0x02;
+	flag_c = p & 0x01;
 }
 
 static void terminate(void) {
 	puts("terminate");
 	force_display();
 #undef getchar
+#undef printf
+	printf("\nfetch %02X \033[1;33m %s \033[0m %s #%llu\n", IR, mnemonic[IR], addressing[IR], counter);
 	getchar();
 	exit(1);
-}
-
-static void idle(void) {
-	// in JSR, register S receives here the addrL just readed, and S only is correctly updated in cycle 6 (branch_any_page)
-	puts("idle");
+#define printf 0&&printf
 }
 
 /****************************************************** Status setting *****************************************************/
 static void set_flag_C(void) {
 	puts("set_flag_C");
-	status_c = true;
+	flag_c = true;
 	fetch_opcode();
 }
 
 static void set_flag_D(void) {
 	puts("set_flag_D");
-	status_d = true;
+	flag_d = true;
 	fetch_opcode();
 }
 
 static void set_flag_I(void) {
 	puts("set_flag_I");
-	status_i = true;
+	flag_i = true;
 	fetch_opcode();
 }
 
 static void clear_flag_C(void) {
 	puts("clear_flag_C");
-	status_c = false;
+	flag_c = false;
 	fetch_opcode();
 }
 
 static void clear_flag_D(void) {
 	puts("clear_flag_D");
-	status_d = false;
+	flag_d = false;
 	fetch_opcode();
 }
 
 static void clear_flag_I(void) {
 	puts("clear_flag_I");
-	status_i = false;
+	flag_i = false;
 	fetch_opcode();
 }
 
 static void clear_flag_V(void) {
 	puts("clear_flag_V");
-	status_v = false;
+	flag_v = false;
 	fetch_opcode();
 }
 
 /******************************************************** Arithmetic *******************************************************/
 static void add_with_carry(void) {
 	puts("add_with_carry");
-	uint16_t sum = A + tmp_data + status_c;
-	status_c = (sum & 0x0100);
+	uint16_t sum = A + tmp_data + flag_c;
+	flag_c = (sum & 0x0100);
 	// overflow: if both operands are positive, the result must be positive (same if both are negative)
-	status_v = ~(A ^ tmp_data) & (A ^ sum) & 0x80;
+	flag_v = ~(A ^ tmp_data) & (A ^ sum) & 0x80;
 	A = sum;
 	update_flags_ZN(A);
 	fetch_opcode();
@@ -209,7 +209,7 @@ static void transfer_SX(void) {
 /**************************************************** Bit manipulation *****************************************************/
 static void shift_left_A(void) {
 	puts("shift_left_A");
-	status_c = (A & 0x80);
+	flag_c = (A & 0x80);
 	A <<= 1;
 	update_flags_ZN(A);
 	fetch_opcode();
@@ -217,13 +217,13 @@ static void shift_left_A(void) {
 
 static void shift_left_data(void) {
 	puts("shift_left_data");
-	status_c = (tmp_data & 0x80);
+	flag_c = (tmp_data & 0x80);
 	tmp_data <<= 1;
 }
 
 static void shift_right_A(void) {
 	puts("shift_right_A");
-	status_c = (A & 0x01);
+	flag_c = (A & 0x01);
 	A >>= 1;
 	update_flags_ZN(A);
 	fetch_opcode();
@@ -231,14 +231,14 @@ static void shift_right_A(void) {
 
 static void shift_right_data(void) {
 	puts("shift_right_data");
-	status_c = (tmp_data & 0x01);
+	flag_c = (tmp_data & 0x01);
 	tmp_data >>= 1;
 }
 
 static void rotate_left_A(void) {
 	puts("rotate_left_A");
-	bool carry = status_c;
-	status_c = (A & 0x80);
+	bool carry = flag_c;
+	flag_c = (A & 0x80);
 	A <<= 1;
 	if (carry)
 		A |= 0x01;
@@ -248,8 +248,8 @@ static void rotate_left_A(void) {
 
 static void rotate_left_data(void) {
 	puts("rotate_left_data");
-	bool carry = status_c;
-	status_c = (tmp_data & 0x80);
+	bool carry = flag_c;
+	flag_c = (tmp_data & 0x80);
 	tmp_data <<= 1;
 	if (carry)
 		tmp_data |= 0x01;
@@ -257,8 +257,8 @@ static void rotate_left_data(void) {
 
 static void rotate_right_A(void) {
 	puts("rotate_right_A");
-	bool carry = status_c;
-	status_c = (A & 0x01);
+	bool carry = flag_c;
+	flag_c = (A & 0x01);
 	A >>= 1;
 	if (carry)
 		A |= 0x80;
@@ -268,8 +268,8 @@ static void rotate_right_A(void) {
 
 static void rotate_right_data(void) {
 	puts("rotate_right_data");
-	bool carry = status_c;
-	status_c = (tmp_data & 0x01);
+	bool carry = flag_c;
+	flag_c = (tmp_data & 0x01);
 	tmp_data >>= 1;
 	if (carry)
 		tmp_data |= 0x80;
@@ -297,6 +297,12 @@ static void put_data_into_Y(void) {
 	fetch_opcode();
 }
 
+static void put_data_into_P(void) {
+	puts("put_data_into_P");
+	ungroup_status_flags(tmp_data);
+	fetch_opcode();
+}
+
 static void store_A(void) {
 	puts("store_A");
 	write_memory(effective_address, A);
@@ -321,71 +327,79 @@ static void store_data(void) {
 /******************************************************* Comparison ********************************************************/
 static void compare_A(void) {
 	puts("compare_A");
-	status_c = (A >= tmp_data);
+	flag_c = (A >= tmp_data);
 	update_flags_ZN(A - tmp_data);
 	fetch_opcode();
 }
 
 static void compare_X(void) {
 	puts("compare_X");
-	status_c = (X >= tmp_data);
+	flag_c = (X >= tmp_data);
 	update_flags_ZN(X - tmp_data);
 	fetch_opcode();
 }
 
 static void compare_Y(void) {
 	puts("compare_Y");
-	status_c = (Y >= tmp_data);
+	flag_c = (Y >= tmp_data);
 	update_flags_ZN(Y - tmp_data);
+	fetch_opcode();
+}
+
+static void bit_test(void) {
+	puts("bit_test");
+	flag_n = (tmp_data & 0x80);
+	flag_v = (tmp_data & 0x40);
+	flag_z = !(tmp_data & A);
 	fetch_opcode();
 }
 
 /******************************************************** Branching ********************************************************/
 static void check_flag_Z_set(void) {
 	puts("check_flag_Z_set");
-	if (!status_z)
+	if (!flag_z)
 		fetch_opcode();
 }
 
 static void check_flag_N_set(void) {
 	puts("check_flag_N_set");
-	if (!status_n)
+	if (!flag_n)
 		fetch_opcode();
 }
 
 static void check_flag_C_set(void) {
 	puts("check_flag_C_set");
-	if (!status_c)
+	if (!flag_c)
 		fetch_opcode();
 }
 
 static void check_flag_V_set(void) {
 	puts("check_flag_V_set");
-	if (!status_v)
+	if (!flag_v)
 		fetch_opcode();
 }
 
 static void check_flag_Z_clr(void) {
 	puts("check_flag_Z_clr");
-	if (status_z)
+	if (flag_z)
 		fetch_opcode();
 }
 
 static void check_flag_N_clr(void) {
 	puts("check_flag_N_clr");
-	if (status_n)
+	if (flag_n)
 		fetch_opcode();
 }
 
 static void check_flag_C_clr(void) {
 	puts("check_flag_C_clr");
-	if (status_c)
+	if (flag_c)
 		fetch_opcode();
 }
 
 static void check_flag_V_clr(void) {
 	puts("check_flag_V_clr");
-	if (status_v)
+	if (flag_v)
 		fetch_opcode();
 }
 
@@ -395,6 +409,7 @@ static void branch_same_page(void) {
 	effective_address = PC + (int8_t) tmp_data;
 	if (PCH == effective_address_hi) {
 		PC = effective_address;
+		set_PC(PC);
 		fetch_opcode();
 	} else {
 		PCL = effective_address_lo;
@@ -404,7 +419,56 @@ static void branch_same_page(void) {
 static void branch_any_page(void) {
 	puts("branch_any_page");
 	PC = effective_address;
+	set_PC(PC);
 	fetch_opcode();
+}
+
+/********************************************************** Stack **********************************************************/
+static void push_A(void) {
+	puts("push_A");
+	write_memory(0x100 | S--, A);
+}
+
+static void push_P(void) {
+	puts("push_P");
+	write_memory(0x100 | S--, group_status_flags());
+}
+
+static void pull_data(void) {
+	puts("pull_data");
+	tmp_data = read_memory(0x100 |++S);
+}
+
+static void pull_P(void) {
+	puts("pull_P");
+	ungroup_status_flags(read_memory(++S | 0x100));
+}
+
+static void push_PCH(void) {
+	puts("push_PCH");
+	write_memory(0x100 | S--, PCH);
+}
+
+static void pull_PCH(void) {
+	puts("pull_PCH");
+	effective_address_hi = read_memory(0x100 | ++S);
+	set_PC(effective_address);
+}
+
+static void pull_PCH_minus_one(void) {
+	puts("pull_PCH");
+	effective_address_hi = read_memory(0x100 | ++S);
+	set_PC(effective_address - 1);
+}
+
+static void push_PCL(void) {
+	puts("push_PCL");
+	write_memory(0x100 | S--, PCL);
+}
+
+static void pull_PCL(void) {
+	puts("pull_PCL");
+	effective_address = read_memory(++S | 0x100);
 }
 
 /***************************************************************************************************************************/
@@ -442,8 +506,28 @@ static void fetch_param_addr_hi(void) {
 	set_PC(PC + 1);
 }
 
-static void fetch_any_data(void) {
-	puts("fetch_any_data");
+static void fetch_param_addr_hi_add_X(void) {
+	puts("fetch_param_addr_hi_add_x");
+	effective_address_hi = read_memory(PC);
+	set_PC(PC + 1);
+	if (effective_address_lo + X < 0x0100) {
+		effective_address_lo += X;
+		step++;
+	}
+}
+
+static void fetch_param_addr_hi_add_Y(void) {
+	puts("fetch_param_addr_hi_add_Y");
+	effective_address_hi = read_memory(PC);
+	set_PC(PC + 1);
+	if (effective_address_lo + Y < 0x0100) {
+		effective_address_lo += Y;
+		step++;
+	}
+}
+
+static void load_data(void) {
+	puts("load_data");
 #if DBG
 	tmp_data = dbg_data;
 	printf("tmp_data ->\033[1;43m %02X \033[0m\n", tmp_data);
@@ -452,133 +536,66 @@ static void fetch_any_data(void) {
 #endif
 }
 
+static void add_X_to_addr(void) {
+	puts("add_X_to_addr");
+	effective_address += X;
+}
+
+static void add_Y_to_addr(void) {
+	puts("add_Y_to_addr");
+	effective_address += Y;
+}
+
 static void add_X_to_addr_lo(void) {
 	puts("add_X_to_addr_lo");
 	effective_address_lo += X;
 }
 
+static void add_Y_to_addr_lo(void) {
+	puts("add_Y_to_addr_lo");
+	effective_address_lo += Y;
+}
+
+static void load_addr_lo(void) {
+	puts("load_addr_lo");
+	tmp_data = read_memory(effective_address);
+}
+
+static void load_addr_hi(void) {
+	puts("load_addr_hi");
+	effective_address_lo += 1; // JMP_ind and STA_indY do not cross page boundaries here
+	effective_address_hi = read_memory(effective_address);
+	effective_address_lo = tmp_data;
+}
+
+static void load_addr_hi_add_Y(void) {
+	puts("load_addr_hi_add_Y");
+	effective_address_hi = read_memory(effective_address + 1);
+	effective_address_lo = tmp_data;
+	if (effective_address_lo + Y < 0x0100) {
+		effective_address_lo += Y;
+		step++;
+	}
+}
+
 /***************************************************************************************************************************/
-/* Read/write */
-static void load_addr(void) {
-	puts("load_addr");
-	effective_address = read_memory(PC);
-	set_PC(PC + 1);
-}
-
-static void load_addr_H(void) {
-	puts("load_addr_H");
-	effective_address_hi = read_memory(PC);
-	set_PC(PC + 1);
-}
-
-/* Stack operations */
-static void pull_P(void) {
-	puts("pull_P");
-	ungroup_status_flags(read_memory(++S | 0x100));
-}
-
-static void pull_PCL(void) {
-	puts("pull_PCL");
-	effective_address = read_memory(++S | 0x100);
-}
-
-static void pull_PCH(void) {
-	// the stack is only updated here
-	puts("pull_PCH");
-	effective_address_hi = read_memory(0x100 | ++S);
-	set_PC(effective_address);
-}
-
-static void push_PCH(void) {
-	puts("push_PCH");
-	write_memory(0x100 | S--, PCH);
-}
-
-static void push_PCL(void) {
-	puts("push_PCL");
-	write_memory(0x100 | S--, PCL);
-}
-
-static void push_P_with_B(void) {
-	puts("push_P_with_B");
-	unsigned char p = group_status_flags();
-	p |= 0x14;
-	write_memory(0x100 | S--, p);
-}
-
-static void push_A(void) { // S is only updated in next cycle
-	puts("push_A");
-	write_memory(0x100 | S--, A);
-}
-
-static void pull_A(void) {
-	puts("pull_A");
-	tmp_data = read_memory(0x100 |++S);
-}
-
-/* Memory access */
 static void read_vector_L(void) {
 	puts("read_vector_L");
 	effective_address = read_memory(vector);
+	flag_b = true;
 }
 
 static void read_vector_H(void) {
 	puts("read_vector_H");
 	effective_address_hi = read_memory(vector + 1);
-	//PC = effective_address;
 	set_PC(effective_address);
 }
 
-static void read_addr(void) {
-	puts("read_addr");
-	tmp_data = read_memory(effective_address);
-}
-
-static void read_addr_H(void) {
-	puts("read_addr_H");
-	effective_address_hi = read_memory(effective_address + 1);
-	effective_address_lo = tmp_data;
-}
-
-static void add_Y_to_addr(void) { // this in fact happens in the next cycle
-	puts("add_Y_to_addr");
-	effective_address += Y;
-}
-
-static void add_X_to_addr_and_read(void) {
-	puts("add_X_to_addr_and_read");
-	effective_address += X;
-	tmp_data = read_memory(effective_address);
-}
-
-static void add_Y_to_addr_and_read(void) {
-	puts("add_Y_to_addr_and_read");
-	effective_address += Y;
-	tmp_data = read_memory(effective_address);
-}
-
-static void add_X_to_addr_and_read_if_same_page(void) {
-	puts("add_X_to_addr_and_read_if_same_page");
-	if (effective_address_lo + X < 0x100) {
-		effective_address += X;
-		tmp_data = read_memory(effective_address);
-		step++;
-	}
-}
-
-static void add_Y_to_addr_and_read_if_same_page(void) {
-	puts("add_Y_to_addr_and_read_if_same_page");
-	if (effective_address_lo + Y < 0x100) {
-		effective_address += Y;
-		tmp_data = read_memory(effective_address);
-		step++;
-	}
-}
 
 opcode *RST_special    [] = { reset };
 opcode *ERR_illegal    [] = { terminate };
-opcode *BRK_stack      [] = { fetch_param_data, push_PCH, push_PCL, push_P_with_B, read_vector_L, read_vector_H, fetch_opcode };
-opcode *RTI_stack      [] = { fetch_param_data, idle, pull_P, pull_PCL, pull_PCH, fetch_opcode };
+opcode *BRK_stack      [] = { fetch_param_data, push_PCH, push_PCL, push_P, read_vector_L, read_vector_H, fetch_opcode };
+opcode *RTI_stack      [] = { fetch_param_data, fetch_rubbish, pull_P, pull_PCL, pull_PCH_minus_one, fetch_opcode };
 
 /* IMPLIED ********************************************************************/
 opcode *SEC_implied    [] = { fetch_rubbish, set_flag_C };
@@ -644,66 +661,144 @@ opcode *STA_zeropage   [] = { fetch_param_addr_zp, store_A, fetch_opcode };
 opcode *STX_zeropage   [] = { fetch_param_addr_zp, store_X, fetch_opcode };
 opcode *STY_zeropage   [] = { fetch_param_addr_zp, store_Y, fetch_opcode };
 
-opcode *LDA_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, put_data_into_A };
-opcode *LDX_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, put_data_into_X };
-opcode *LDY_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, put_data_into_Y };
+opcode *LDA_zeropage   [] = { fetch_param_addr_zp, load_data, put_data_into_A };
+opcode *LDX_zeropage   [] = { fetch_param_addr_zp, load_data, put_data_into_X };
+opcode *LDY_zeropage   [] = { fetch_param_addr_zp, load_data, put_data_into_Y };
 
-opcode *AND_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, bitwise_and };
-opcode *ORA_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, bitwise_or };
-opcode *EOR_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, bitwise_xor };
+opcode *AND_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_and };
+opcode *ORA_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_or };
+opcode *EOR_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_xor };
 
-opcode *ADC_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, add_with_carry };
+opcode *CMP_zeropage   [] = { fetch_param_addr_zp, load_data, compare_A };
+opcode *CPX_zeropage   [] = { fetch_param_addr_zp, load_data, compare_X };
+opcode *CPY_zeropage   [] = { fetch_param_addr_zp, load_data, compare_Y };
+opcode *BIT_zeropage   [] = { fetch_param_addr_zp, load_data, bit_test };
 
-opcode *INC_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, increment_data,    store_data, fetch_opcode };
-opcode *DEC_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, decrement_data,    store_data, fetch_opcode };
+opcode *ADC_zeropage   [] = { fetch_param_addr_zp, load_data, add_with_carry };
+opcode *SBC_zeropage   [] = { fetch_param_addr_zp, load_data, subtract_with_carry };
 
-opcode *ASL_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, shift_left_data,   store_data, fetch_opcode };
-opcode *LSR_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, shift_right_data,  store_data, fetch_opcode };
-opcode *ROL_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, rotate_left_data,  store_data, fetch_opcode };
-opcode *ROR_zeropage   [] = { fetch_param_addr_zp, fetch_any_data, rotate_right_data, store_data, fetch_opcode };
+opcode *INC_zeropage   [] = { fetch_param_addr_zp, load_data, increment_data,    store_data, fetch_opcode };
+opcode *DEC_zeropage   [] = { fetch_param_addr_zp, load_data, decrement_data,    store_data, fetch_opcode };
+
+opcode *ASL_zeropage   [] = { fetch_param_addr_zp, load_data, shift_left_data,   store_data, fetch_opcode };
+opcode *LSR_zeropage   [] = { fetch_param_addr_zp, load_data, shift_right_data,  store_data, fetch_opcode };
+opcode *ROL_zeropage   [] = { fetch_param_addr_zp, load_data, rotate_left_data,  store_data, fetch_opcode };
+opcode *ROR_zeropage   [] = { fetch_param_addr_zp, load_data, rotate_right_data, store_data, fetch_opcode };
 
 
 /* ABSOLUTE *******************************************************************/
 opcode *STA_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, store_A, fetch_opcode };
 opcode *STX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, store_X, fetch_opcode };
+opcode *STY_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, store_Y, fetch_opcode };
 
-opcode *LDA_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, fetch_any_data, put_data_into_A };
-opcode *LDX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, fetch_any_data, put_data_into_X };
+opcode *LDA_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, put_data_into_A };
+opcode *LDX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, put_data_into_X };
+opcode *LDY_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, put_data_into_Y };
 
-opcode *CPX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, fetch_any_data, compare_X };
+opcode *AND_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bitwise_and };
+opcode *ORA_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bitwise_or };
+opcode *EOR_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bitwise_xor };
+
+opcode *CMP_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, compare_A };
+opcode *CPX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, compare_X };
+opcode *BIT_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bit_test };
+
+opcode *ADC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, add_with_carry };
+
+opcode *INC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, increment_data,    store_data, fetch_opcode };
+opcode *DEC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, decrement_data,    store_data, fetch_opcode };
+
+opcode *ASL_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, shift_left_data,   store_data, fetch_opcode };
+opcode *ROR_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, rotate_right_data, store_data, fetch_opcode };
 
 opcode *JMP_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, branch_any_page };
 
-opcode *JSR_absolute   [] = { load_addr, idle, push_PCH, push_PCL, load_addr_H, branch_any_page };
+opcode *JSR_absolute   [] = { fetch_param_addr_lo, fetch_rubbish, push_PCH, push_PCL, fetch_param_addr_hi, branch_any_page };
 
 
 /* ZERO PAGE X ****************************************************************/
 opcode *STA_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, store_A, fetch_opcode };
+opcode *STY_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, store_Y, fetch_opcode };
 
-opcode *LDA_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, fetch_any_data, put_data_into_A };
-opcode *LDY_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, fetch_any_data, put_data_into_Y };
+opcode *LDA_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, put_data_into_A };
+opcode *LDY_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, put_data_into_Y };
 
-opcode *AND_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, fetch_any_data, bitwise_and };
+opcode *AND_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, bitwise_and };
+opcode *ORA_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, bitwise_or };
 
-opcode *DEC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, fetch_any_data, decrement_data,    store_data, fetch_opcode };
+opcode *CMP_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, compare_A };
 
-opcode *ROR_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, fetch_any_data, rotate_right_data, store_data, fetch_opcode };
+opcode *ADC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, add_with_carry };
+opcode *SBC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, subtract_with_carry };
+
+opcode *INC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, increment_data,    store_data, fetch_opcode };
+opcode *DEC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, decrement_data,    store_data, fetch_opcode };
+
+opcode *LSR_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, shift_right_data,  store_data, fetch_opcode };
+opcode *ROL_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, rotate_left_data,  store_data, fetch_opcode };
+opcode *ROR_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, rotate_right_data, store_data, fetch_opcode };
 
 
-/* ABSOLUTE X */
-opcode *LDA_absoluteX  [] = { load_addr, load_addr_H, add_X_to_addr_and_read_if_same_page, add_X_to_addr_and_read, put_data_into_A };
+/* ZERO PAGE Y ****************************************************************/
+opcode *STX_zeropageY  [] = { fetch_param_addr_zp, add_Y_to_addr_lo, store_X, fetch_opcode };
 
-/* INDIRECT Y */
-opcode *STA_indirectY  [] = { load_addr, read_addr, read_addr_H, add_Y_to_addr, store_A, fetch_opcode };
-opcode *LDA_indirectY  [] = { load_addr, read_addr, read_addr_H, add_Y_to_addr_and_read_if_same_page, add_Y_to_addr_and_read, put_data_into_A };
+opcode *LDX_zeropageY  [] = { fetch_param_addr_zp, add_Y_to_addr_lo, load_data, put_data_into_X };
 
-/* INDIRECT */
-opcode *JMP_indirect   [] = { load_addr, load_addr_H, read_addr, read_addr_H, branch_any_page };
 
-/* STACK */
-opcode *RTS_stack      [] = { fetch_param_data, idle, pull_PCL, pull_PCH, fetch_param_data, fetch_opcode };
+/* ABSOLUTE X *****************************************************************/
+opcode *STA_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, store_A, fetch_opcode };
+
+opcode *LDA_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, put_data_into_A };
+opcode *LDY_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, put_data_into_Y };
+
+opcode *ORA_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, bitwise_or };
+
+opcode *CMP_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, compare_A };
+
+opcode *ADC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, add_with_carry };
+opcode *SBC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, subtract_with_carry };
+
+opcode *INC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, increment_data,    store_data, fetch_opcode };
+opcode *DEC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, decrement_data,    store_data, fetch_opcode };
+
+opcode *ROL_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, rotate_left_data,  store_data, fetch_opcode };
+opcode *ROR_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, rotate_right_data, store_data, fetch_opcode };
+
+
+/* ABSOLUTE Y *****************************************************************/
+opcode *STA_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_Y_to_addr, store_A, fetch_opcode };
+
+opcode *LDA_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, put_data_into_A };
+opcode *LDX_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, put_data_into_X };
+
+opcode *CMP_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, compare_A };
+
+opcode *ADC_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, add_with_carry };
+
+
+/* INDIRECT Y *****************************************************************/
+opcode *STA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi, add_Y_to_addr, store_A, fetch_opcode };
+
+opcode *LDA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, put_data_into_A };
+
+opcode *ORA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_or };
+
+opcode *ADC_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, add_with_carry };
+
+
+/* INDIRECT *******************************************************************/
+opcode *JMP_indirect   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_addr_lo, load_addr_hi, branch_any_page };
+
+
+/* STACK **********************************************************************/
 opcode *PHA_stack      [] = { fetch_rubbish, push_A, fetch_opcode };
-opcode *PLA_stack      [] = { fetch_rubbish, idle, pull_A, put_data_into_A };
+opcode *PHP_stack      [] = { fetch_rubbish, push_P, fetch_opcode };
+
+opcode *PLA_stack      [] = { fetch_rubbish, fetch_rubbish, pull_data, put_data_into_A };
+opcode *PLP_stack      [] = { fetch_rubbish, fetch_rubbish, pull_data, put_data_into_P };
+
+opcode *RTS_stack      [] = { fetch_param_data, fetch_rubbish, pull_PCL, pull_PCH, fetch_param_data, fetch_opcode };
+
 
 opcode **oop[] = { ERR_illegal, SEI_implied };
 

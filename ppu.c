@@ -14,7 +14,7 @@ char is_rendering = 0;
 char NMI_enabled = 0;
 char background_pattern_table_address = 0;
 char sprite_pattern_table_address = 0;
-char VRAM_address_increment = 0; // per CPU read/write of PPUDATA
+char VRAM_address_increment = 1; // per CPU read/write of PPUDATA
 char base_nametable_address = 0;
 
 // 0x2001 PPUMASK
@@ -55,7 +55,13 @@ unsigned char ppu_read(unsigned short ppu_register) {
 		printf("    ppu_read  %04X -> PPUSTATUS %02X\n", ppu_register, result);
 		return result;
 	}
+	if (ppu_register == 0x2007) {
+		//mario bros
+		return 0;
+	}
+#undef printf
 	printf("    ppu_read  %04X ERR\n", ppu_register);
+#define printf 0&&printf
 	exit(4);
 }
 
@@ -64,8 +70,8 @@ void ppu_write(unsigned short ppu_register, unsigned char data) {
 		printf("    ppu_write %04X -> PPUCTRL   %02X\n", ppu_register, data);
 		NMI_enabled = (data & 0x80) >> 7;
 		background_pattern_table_address = (data & 0x10) >> 4;
-		sprite_pattern_table_address = (data & 0x04) >> 3;
-		VRAM_address_increment = (data & 0x02) >> 2;
+		sprite_pattern_table_address = (data & 0x08) >> 3;
+		VRAM_address_increment = ((data & 0x04) >> 2) ? 32 : 1;
 		base_nametable_address = (data & 0x03);
 		printf("      NMI_enabled %d\n", NMI_enabled);
 		printf("      background_pattern_table_address %d\n", background_pattern_table_address);
@@ -131,8 +137,7 @@ getchar();
 		printf("    ppu_write %04X -> PPUDATA   %02X\n", ppu_register, data);
 		VRAM[ppu_addr & 0x07FF] = data;
 		printf("      ppu_addr %04X -> %02X\n", ppu_addr & 0x07FF, data);
-		ppu_addr += 1;
-if (VRAM_address_increment != 0) exit(9);
+		ppu_addr += VRAM_address_increment;
 		return;
 	}
 //	if (ppu_register == 0x14) {
