@@ -637,12 +637,12 @@ opcode *CMP_immediate  [] = { fetch_param_data, compare_A };
 opcode *CPX_immediate  [] = { fetch_param_data, compare_X };
 opcode *CPY_immediate  [] = { fetch_param_data, compare_Y };
 
-opcode *ADC_immediate  [] = { fetch_param_data, add_with_carry };
-opcode *SBC_immediate  [] = { fetch_param_data, subtract_with_carry };
-
 opcode *AND_immediate  [] = { fetch_param_data, bitwise_and };
 opcode *ORA_immediate  [] = { fetch_param_data, bitwise_or };
 opcode *EOR_immediate  [] = { fetch_param_data, bitwise_xor };
+
+opcode *ADC_immediate  [] = { fetch_param_data, add_with_carry };
+opcode *SBC_immediate  [] = { fetch_param_data, subtract_with_carry };
 
 
 /* RELATIVE *******************************************************************/
@@ -665,24 +665,24 @@ opcode *LDA_zeropage   [] = { fetch_param_addr_zp, load_data, put_data_into_A };
 opcode *LDX_zeropage   [] = { fetch_param_addr_zp, load_data, put_data_into_X };
 opcode *LDY_zeropage   [] = { fetch_param_addr_zp, load_data, put_data_into_Y };
 
-opcode *AND_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_and };
-opcode *ORA_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_or };
-opcode *EOR_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_xor };
-
 opcode *CMP_zeropage   [] = { fetch_param_addr_zp, load_data, compare_A };
 opcode *CPX_zeropage   [] = { fetch_param_addr_zp, load_data, compare_X };
 opcode *CPY_zeropage   [] = { fetch_param_addr_zp, load_data, compare_Y };
 opcode *BIT_zeropage   [] = { fetch_param_addr_zp, load_data, bit_test };
 
+opcode *AND_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_and };
+opcode *ORA_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_or };
+opcode *EOR_zeropage   [] = { fetch_param_addr_zp, load_data, bitwise_xor };
+
 opcode *ADC_zeropage   [] = { fetch_param_addr_zp, load_data, add_with_carry };
 opcode *SBC_zeropage   [] = { fetch_param_addr_zp, load_data, subtract_with_carry };
 
-opcode *INC_zeropage   [] = { fetch_param_addr_zp, load_data, increment_data,    store_data, fetch_opcode };
-opcode *DEC_zeropage   [] = { fetch_param_addr_zp, load_data, decrement_data,    store_data, fetch_opcode };
+opcode *INC_zeropage   [] = { fetch_param_addr_zp, load_data, increment_data, store_data, fetch_opcode };
+opcode *DEC_zeropage   [] = { fetch_param_addr_zp, load_data, decrement_data, store_data, fetch_opcode };
 
-opcode *ASL_zeropage   [] = { fetch_param_addr_zp, load_data, shift_left_data,   store_data, fetch_opcode };
-opcode *LSR_zeropage   [] = { fetch_param_addr_zp, load_data, shift_right_data,  store_data, fetch_opcode };
-opcode *ROL_zeropage   [] = { fetch_param_addr_zp, load_data, rotate_left_data,  store_data, fetch_opcode };
+opcode *ASL_zeropage   [] = { fetch_param_addr_zp, load_data, shift_left_data, store_data, fetch_opcode };
+opcode *LSR_zeropage   [] = { fetch_param_addr_zp, load_data, shift_right_data, store_data, fetch_opcode };
+opcode *ROL_zeropage   [] = { fetch_param_addr_zp, load_data, rotate_left_data, store_data, fetch_opcode };
 opcode *ROR_zeropage   [] = { fetch_param_addr_zp, load_data, rotate_right_data, store_data, fetch_opcode };
 
 
@@ -695,20 +695,24 @@ opcode *LDA_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_dat
 opcode *LDX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, put_data_into_X };
 opcode *LDY_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, put_data_into_Y };
 
+opcode *CMP_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, compare_A };
+opcode *CPX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, compare_X };
+opcode *CPY_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, compare_Y };
+opcode *BIT_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bit_test };
+
 opcode *AND_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bitwise_and };
 opcode *ORA_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bitwise_or };
 opcode *EOR_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bitwise_xor };
 
-opcode *CMP_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, compare_A };
-opcode *CPX_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, compare_X };
-opcode *BIT_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, bit_test };
-
 opcode *ADC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, add_with_carry };
+opcode *SBC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, subtract_with_carry };
 
-opcode *INC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, increment_data,    store_data, fetch_opcode };
-opcode *DEC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, decrement_data,    store_data, fetch_opcode };
+opcode *INC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, increment_data, store_data, fetch_opcode };
+opcode *DEC_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, decrement_data, store_data, fetch_opcode };
 
-opcode *ASL_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, shift_left_data,   store_data, fetch_opcode };
+opcode *ASL_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, shift_left_data, store_data, fetch_opcode };
+opcode *LSR_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, shift_right_data, store_data, fetch_opcode };
+opcode *ROL_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, rotate_left_data, store_data, fetch_opcode };
 opcode *ROR_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, load_data, rotate_right_data, store_data, fetch_opcode };
 
 opcode *JMP_absolute   [] = { fetch_param_addr_lo, fetch_param_addr_hi, branch_any_page };
@@ -723,19 +727,21 @@ opcode *STY_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, store_Y, fe
 opcode *LDA_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, put_data_into_A };
 opcode *LDY_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, put_data_into_Y };
 
+opcode *CMP_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, compare_A };
+
 opcode *AND_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, bitwise_and };
 opcode *ORA_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, bitwise_or };
-
-opcode *CMP_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, compare_A };
+opcode *EOR_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, bitwise_xor };
 
 opcode *ADC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, add_with_carry };
 opcode *SBC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, subtract_with_carry };
 
-opcode *INC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, increment_data,    store_data, fetch_opcode };
-opcode *DEC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, decrement_data,    store_data, fetch_opcode };
+opcode *INC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, increment_data, store_data, fetch_opcode };
+opcode *DEC_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, decrement_data, store_data, fetch_opcode };
 
-opcode *LSR_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, shift_right_data,  store_data, fetch_opcode };
-opcode *ROL_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, rotate_left_data,  store_data, fetch_opcode };
+opcode *ASL_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, shift_left_data, store_data, fetch_opcode };
+opcode *LSR_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, shift_right_data, store_data, fetch_opcode };
+opcode *ROL_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, rotate_left_data, store_data, fetch_opcode };
 opcode *ROR_zeropageX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_data, rotate_right_data, store_data, fetch_opcode };
 
 
@@ -751,7 +757,9 @@ opcode *STA_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to
 opcode *LDA_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, put_data_into_A };
 opcode *LDY_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, put_data_into_Y };
 
+opcode *AND_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, bitwise_and };
 opcode *ORA_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, bitwise_or };
+opcode *EOR_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, bitwise_xor };
 
 opcode *CMP_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, compare_A };
 
@@ -771,9 +779,12 @@ opcode *STA_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_Y_to
 opcode *LDA_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, put_data_into_A };
 opcode *LDX_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, put_data_into_X };
 
+opcode *AND_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_and };
+
 opcode *CMP_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, compare_A };
 
 opcode *ADC_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, add_with_carry };
+opcode *SBC_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, subtract_with_carry };
 
 
 /* INDIRECT Y *****************************************************************/
@@ -783,7 +794,10 @@ opcode *LDA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_ad
 
 opcode *ORA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_or };
 
+opcode *CMP_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, compare_A };
+
 opcode *ADC_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, add_with_carry };
+opcode *SBC_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, subtract_with_carry };
 
 
 /* INDIRECT *******************************************************************/

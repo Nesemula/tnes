@@ -151,7 +151,7 @@ void* thread_sdl(void *arg) {
 	int go_on = 1;
 	while (go_on) {
 		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
+		while (SDL_WaitEvent(&event)) {
 
 			if (event.type == SDL_QUIT) {
 				go_on = 0;
