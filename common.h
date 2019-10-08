@@ -1,7 +1,7 @@
 // CPU
 void cpu_exec(void);
 void cpu_interrupt(void);
-void cpu_dma(unsigned char base_address);
+void cpu_hang(void);
 
 // PPU
 void ppu_exec(void);
@@ -21,13 +21,11 @@ void load_ROM(const char *file_name);
 void map_program_data(unsigned char *prg_data);
 unsigned char read_memory(unsigned short address);
 void write_memory(unsigned short address, unsigned char data);
+int memory_auto_transfer(void);
 
-#ifdef NOPAUSE
+#ifndef DBGOUT
 #define getchar 0&&getchar
-#endif
-
-#ifdef NOPRINT
-#define printf 0&&printf
 #define puts 0&&puts
+#define printf 0&&printf
 #endif
 

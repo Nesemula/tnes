@@ -23,13 +23,15 @@ char show_sprites_in_leftmost_8_pixels = 0;
 char show_background = 0;
 char show_background_in_leftmost_8_pixels = 0;
 
+// 0x2004 OAMDATA
+
 // 0x2002 PPUSTATUS
 char vblank = 0;
 char sprite_zero_hit = 0;
 char sprite_overflow = 0;
 
 // 0x2003 OAMADDR
-unsigned short OAM_address = 0;
+unsigned char OAM_address = 0;
 
 // 0x2005 PPUSCROLL
 unsigned char scroll_write = 0;
@@ -56,12 +58,14 @@ unsigned char ppu_read(unsigned short ppu_register) {
 		return result;
 	}
 	if (ppu_register == 0x2007) {
-		//mario bros
-		return 0;
+		static unsigned char data = 0;//VRAM[ppu_addr & 0x07FF];
+		unsigned char tmp = data;
+		printf("      ppu_addr %04X -> %02X\n", ppu_addr & 0x07FF, data);
+		data = VRAM[ppu_addr & 0x07FF];
+		ppu_addr += VRAM_address_increment;
+		return tmp;
 	}
-#undef printf
 	printf("    ppu_read  %04X ERR\n", ppu_register);
-#define printf 0&&printf
 	exit(4);
 }
 
@@ -71,14 +75,14 @@ void ppu_write(unsigned short ppu_register, unsigned char data) {
 		NMI_enabled = (data & 0x80) >> 7;
 		background_pattern_table_address = (data & 0x10) >> 4;
 		sprite_pattern_table_address = (data & 0x08) >> 3;
-		VRAM_address_increment = ((data & 0x04) >> 2) ? 32 : 1;
+		VRAM_address_increment = (data & 0x04) ? 32 : 1;
 		base_nametable_address = (data & 0x03);
 		printf("      NMI_enabled %d\n", NMI_enabled);
 		printf("      background_pattern_table_address %d\n", background_pattern_table_address);
 		printf("      sprite_pattern_table_address %d\n", sprite_pattern_table_address);
 		printf("      VRAM_address_increment %d\n", VRAM_address_increment);
 		printf("      base_nametable_address %d\n", base_nametable_address);
-getchar();
+//getchar();
 		return;
 	}
 	if (ppu_register == 0x2001) {
@@ -102,8 +106,8 @@ getchar();
 getchar();
 		return;
 	}
-	if (ppu_register == 0x04) {
-		printf("    ppu_write %02X -> OAMDATA   %02X\n", ppu_register, data);
+	if (ppu_register == 0x2004) {
+		printf("    ppu_write %04X -> OAMDATA   %02X\n", ppu_register, data);
 		OAM[OAM_address++] = data;
 		printf("      OAM_address[%02X] -> %02X\n", OAM_address - 1, data);
 getchar();
@@ -130,21 +134,18 @@ getchar();
 		else
 			ppu_addr |= data;
 		printf("      ppu_addr %04X\n", ppu_addr);
-getchar();
+//getchar();
 		return;
 	}
 	if (ppu_register == 0x2007) {
 		printf("    ppu_write %04X -> PPUDATA   %02X\n", ppu_register, data);
-		VRAM[ppu_addr & 0x07FF] = data;
+		unsigned short tmp = ppu_addr & 0xFFF;
+		if (tmp >= 0x800) tmp -= 0x400;
+		VRAM[tmp] = data;
 		printf("      ppu_addr %04X -> %02X\n", ppu_addr & 0x07FF, data);
 		ppu_addr += VRAM_address_increment;
 		return;
 	}
-//	if (ppu_register == 0x14) {
-//		printf("    ppu_write %02X -> OAMDMA    %02X\n", ppu_register, data);
-//		cpu_dma(data);
-//		return;
-//	}
 	printf("    ppu_write %02X ERR %02X\n", ppu_register, data);
 	exit(5);
 }
@@ -154,13 +155,41 @@ void generate_buffer(unsigned char scanline) {
 	int pixel_line = scanline % 8;
 	for (int tile = 0; tile < 32; tile++) {
 		int name_table_entry = tile + ((scanline / 8) * 32);
-		int pattern_table_entry = VRAM[name_table_entry] * 16 + pixel_line + (background_pattern_table_address ? 0x1000 : 0);
+		int pattern_table_entry = VRAM[name_table_entry + (base_nametable_address ? 0x400 : 0)] * 16 + pixel_line + (background_pattern_table_address ? 0x1000 : 0);
 		for (int pixel = 0; pixel < 8; pixel++) {
 			int a = CHR[pattern_table_entry] & (0x80 >> pixel);
 			int b = CHR[pattern_table_entry + 8] & (0x80 >> pixel);
 			FRAME_BUFFER[buffer_entry++] = (a ? 1 : 0) + (b ? 2 : 0);
 		}
 		name_table_entry += 16;
+	}
+
+	buffer_entry = scanline * 256;
+	for (int sprite = 0; sprite < 256; sprite += 4) {
+		if (OAM[sprite] >= 0xEF)
+			continue;
+		if ((OAM[sprite]+1) > scanline || (OAM[sprite]+1) < scanline - 7)
+			continue;
+		int oam_table_entry = OAM[sprite + 1];
+		int oam_line = (OAM[sprite + 2] & 0x80) ? (OAM[sprite]+8 - scanline) : (scanline - OAM[sprite]-1);
+		int pattern_table_entry = oam_table_entry * 16 + oam_line + (sprite_pattern_table_address ? 0x1000 : 0);
+		if (OAM[sprite + 2] & 0x40)
+			for (int pixel = 0; pixel < 8; pixel++) {
+				int a = CHR[pattern_table_entry] & (0x01 << pixel);
+				int b = CHR[pattern_table_entry + 8] & (0x01 << pixel);
+				if (a + b)
+					if (!((OAM[sprite + 2] & 0x20) && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel]))
+						FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] = (a ? 1 : 0) + (b ? 2 : 0);
+			}
+		else
+			for (int pixel = 0; pixel < 8; pixel++) {
+				int a = CHR[pattern_table_entry] & (0x80 >> pixel);
+				int b = CHR[pattern_table_entry + 8] & (0x80 >> pixel);
+				if (a + b)
+					if (!((OAM[sprite + 2] & 0x20) && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel]))
+						FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] = (a ? 1 : 0) + (b ? 2 : 0);
+			}
+
 	}
 }
 

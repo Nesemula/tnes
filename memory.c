@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include "common.h"
 
+unsigned short dma_address;
+unsigned short dma_cycle;
+unsigned short dma_write_cycle;
+
 unsigned char *PRG;
 unsigned char RAM[0x800];
 
@@ -28,9 +32,7 @@ unsigned char read_memory(unsigned short address) {
 getchar();
 		return 0;
 	}
-#undef printf
 	printf("  read_memory  %04X ERR\n", address);
-#define printf 0&&printf
 	exit(2);
 }
 
@@ -47,7 +49,10 @@ void write_memory(unsigned short address, unsigned char data) {
 	}
 	if (address == 0x4014) {
 		printf("  write_memory %04X -> \033[1;35mOAMDMA\033[0m %04X -> %02X\n", address, address & 0x000F, data);
-		//ppu_write(address & 0x00FF, data);
+		dma_address = data << 8;
+		dma_cycle = 0;
+		dma_write_cycle = 0;
+		cpu_hang();
 		return;
 	}
 	if (address >= 0x4000 && address <= 0x4017) {
@@ -57,5 +62,13 @@ getchar();
 	}
 	printf("  write_memory %04X -> %02X ERR\n", address, data);
 	exit(3);
+}
+
+int memory_auto_transfer(void) {
+	printf("memory_auto_transfer %d %04X %d\n", dma_write_cycle, dma_address, dma_cycle);
+	if (dma_write_cycle)
+		ppu_write(0x2004, RAM[dma_address++]);
+	dma_write_cycle = !dma_write_cycle;
+	return (++dma_cycle < 512);
 }
 

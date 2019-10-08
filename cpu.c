@@ -18,6 +18,7 @@
 #define   IRQ_VECTOR 0xFFFE
 
 typedef void opcode(void);
+void (*next_op)(void);
 
 typedef union {
 	struct {
@@ -41,10 +42,8 @@ bool flag_i = false;
 bool flag_z = false;
 bool flag_c = false;
 
-int DMA_occured = 0;
-int DMA_address = 0;
-int NMI_occured = 0;
-int step = 0;
+uint_fast8_t step = 0;
+
 uint16_t next_PC = 0x0000;
 uint16_t vector = RESET_VECTOR;
 
@@ -65,14 +64,8 @@ unsigned long long counter = 0;
 
 opcode **current = RST_special;
 
-static void reset(void) {
-	unsigned char op = 0x00;
-	printf("\nreset %02X \033[1;33m %s \033[0m %s\n", op, mnemonic[op], addressing[op]);
-	read_memory(PC);
-	set_PC(PC + 1);
-	flag_b = false;
-	step = 0;
-	current = BRK_stack;
+static void next(void) {
+	(*next_op)();
 }
 
 static void fetch_opcode(void) {
@@ -88,16 +81,7 @@ static void fetch_opcode(void) {
 	else  op = 0x24;
 	dbg_data = 0x11;
 #else
-	if (NMI_occured) {
-		NMI_occured = 0;
-		printf("\ninterrupt ->\033[1;33m NMI \033[0m\n");
-		vector = NMI_VECTOR;
-		//op = 0x00;
-		current = BRK_stack;
-		step = 0;
-		return;
-	}
-	unsigned char op = read_memory(PC);
+	uint8_t op = read_memory(PC);
 #endif
 	IR = op;
 	set_PC(PC + 1);
@@ -147,6 +131,7 @@ static void fetch_opcode(void) {
 		case 0x55: current = EOR_zeropageX;   break;
 		case 0x56: current = LSR_zeropageX;   break;
 		case 0x58: current = CLI_implied;     break;
+		case 0x59: current = EOR_absoluteY;   break;
 		case 0x5D: current = EOR_absoluteX;   break;
 		case 0x60: current = RTS_stack;       break;
 		case 0x65: current = ADC_zeropage;    break;
@@ -244,27 +229,61 @@ static void fetch_opcode(void) {
 	}
 }
 
-void cpu_dma(unsigned char base_address) {
-	DMA_occured = 1;
-	DMA_address = base_address;
+static void wait_for_mem(void) {
+	puts("wait_for_mem");
+	if (memory_auto_transfer())
+		step--;
+	else {
+		//getchar();
+		next();
+	}
+}
+
+static void reset(void) {
+	unsigned char op = 0x00;
+	printf("\nreset %02X \033[1;33m %s \033[0m %s\n", op, mnemonic[op], addressing[op]);
+	read_memory(PC);
+	set_PC(PC + 1);
+	flag_b = false;
+	step = 0;
+	current = BRK_stack;
+	next_op = &fetch_opcode;
+}
+
+static void dma_setup(void) {
+	printf("\ntransfer ->\033[1;33m DMA \033[0m\n");
+	current = DMA_special;
+	step = 0;
+	next_op = &fetch_opcode;
+}
+
+static void nmi_setup(void) {
+	printf("\ninterrupt ->\033[1;33m NMI \033[0m\n");
+	vector = NMI_VECTOR;
+	current = BRK_stack;
+	step = 0;
+	next_op = &fetch_opcode;
+}
+
+void cpu_hang(void) {
+	next_op = &dma_setup;
 }
 
 void cpu_interrupt(void) {
-	NMI_occured = 1;
+	next_op = &nmi_setup;
 	flag_b = false;
-//opcode *x = fetch_opcode;
-//ERR_illegal[0] = x;
 }
 
-inline void cpu_exec(void) {
+void cpu_exec(void) {
 	update_PC();
-	//if (DMA_occured) fetch_opcode();
-	//else
 	current[step++]();
+#ifdef DBGOUT
 	uint8_t P = group_status_flags();
-	0&&printf(">> A %02X, X %02X, Y %02X, S %02X, P %02X, PC %04X, %c%c%c%c%c%c%c%c #%llu\n", A, X, Y, S, P, PC,
+	printf(">> A %02X, X %02X, Y %02X, S %02X, P %02X, PC %04X, %c%c%c%c%c%c%c%c #%llu\n", A, X, Y, S, P, PC,
 		P & 0x80 ? 'n' : '.', P & 0x40 ? 'v' : '.', P & 0x20 ? 'x' : '.', P & 0x10 ? 'b' : '.',
 			P & 0x08 ? 'd' : '.', P & 0x04 ? 'i' : '.', P & 0x02 ? 'z' : '.', P & 0x01 ? 'c' : '.', ++counter);
+#else
 	counter++;
+#endif
 }
 

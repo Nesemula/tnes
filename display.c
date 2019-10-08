@@ -84,6 +84,8 @@ void display_frame(unsigned char *frame) {
 	SDL_Event sdlevent;
 	sdlevent.type = SDL_TEXTINPUT;
 	SDL_PushEvent(&sdlevent);
+#undef getchar
+	//getchar();
 }
 
 void upscale(void) {
