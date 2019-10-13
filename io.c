@@ -124,7 +124,7 @@ void sync(void) {
 	if (!ticks)
 		ticks = SDL_GetTicks();
 	if (SDL_GetTicks() - ticks >= seconds * 1000) {
-		char buffer[24];
+		char buffer[24]; 
 		sprintf(buffer, "fuNEStus - %dfps", frames / seconds);
 		SDL_SetWindowTitle(sdlWindow, buffer);
 		seconds++;

@@ -11,8 +11,11 @@ unsigned char ppu_read(unsigned short ppu_register);
 void force_display(void);
 
 // GUI
+void sync(void);
 void initialize_display(void);
 void display_frame(unsigned char *frame);
+unsigned char get_input(void);
+void reset_input(void);
 
 // Loader
 void load_ROM(const char *file_name);
@@ -23,8 +26,8 @@ unsigned char read_memory(unsigned short address);
 void write_memory(unsigned short address, unsigned char data);
 int memory_auto_transfer(void);
 
-#ifndef DBGOUT
 #define getchar 0&&getchar
+#ifndef DBGOUT
 #define puts 0&&puts
 #define printf 0&&printf
 #endif

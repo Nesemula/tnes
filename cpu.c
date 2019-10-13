@@ -34,13 +34,22 @@ uint8_t Y = 0x00;
 uint8_t S = 0x00;
 address program_counter;
 
-bool flag_n = false;
-bool flag_v = false;
-bool flag_b = false;
-bool flag_d = false;
-bool flag_i = false;
-bool flag_z = false;
-bool flag_c = false;
+struct {
+	bool n;
+	bool v;
+	bool b;
+	bool d;
+	bool i;
+	bool z;
+	bool c;
+} flag;
+#define flag_n flag.n
+#define flag_v flag.v
+#define flag_b flag.b
+#define flag_d flag.d
+#define flag_i flag.i
+#define flag_z flag.z
+#define flag_c flag.c
 
 uint_fast8_t step = 0;
 
@@ -100,7 +109,9 @@ static void fetch_opcode(void) {
 		case 0x15: current = ORA_zeropageX;   break;
 		case 0x16: current = ASL_zeropageX;   break;
 		case 0x18: current = CLC_implied;     break;
+		case 0x19: current = ORA_absoluteY;   break;
 		case 0x1D: current = ORA_absoluteX;   break;
+		case 0x1E: current = ASL_absoluteX;   break;
 		case 0x20: current = JSR_absolute;    break;
 		case 0x24: current = BIT_zeropage;    break;
 		case 0x25: current = AND_zeropage;    break;
@@ -112,6 +123,7 @@ static void fetch_opcode(void) {
 		case 0x2D: current = AND_absolute;    break;
 		case 0x2E: current = ROL_absolute;    break;
 		case 0x30: current = BMI_relative;    break;
+		case 0x31: current = AND_indirectY;   break;
 		case 0x35: current = AND_zeropageX;   break;
 		case 0x36: current = ROL_zeropageX;   break;
 		case 0x38: current = SEC_implied;     break;
@@ -128,11 +140,13 @@ static void fetch_opcode(void) {
 		case 0x4D: current = EOR_absolute;    break;
 		case 0x4E: current = LSR_absolute;    break;
 		case 0x50: current = BVC_relative;    break;
+		case 0x51: current = EOR_indirectY;   break;
 		case 0x55: current = EOR_zeropageX;   break;
 		case 0x56: current = LSR_zeropageX;   break;
 		case 0x58: current = CLI_implied;     break;
 		case 0x59: current = EOR_absoluteY;   break;
 		case 0x5D: current = EOR_absoluteX;   break;
+		case 0x5E: current = LSR_absoluteX;   break;
 		case 0x60: current = RTS_stack;       break;
 		case 0x65: current = ADC_zeropage;    break;
 		case 0x66: current = ROR_zeropage;    break;
@@ -168,6 +182,7 @@ static void fetch_opcode(void) {
 		case 0x9A: current = TXS_implied;     break;
 		case 0x9D: current = STA_absoluteX;   break;
 		case 0xA0: current = LDY_immediate;   break;
+		//case 0xA1: current = LDA_indirectX;   break;
 		case 0xA2: current = LDX_immediate;   break;
 		case 0xA4: current = LDY_zeropage;    break;
 		case 0xA5: current = LDA_zeropage;    break;

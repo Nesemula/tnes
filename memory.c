@@ -27,10 +27,11 @@ unsigned char read_memory(unsigned short address) {
 		printf("  read_memory  %04X -> \033[1;34mPPU\033[0m %X -> %02X\n", address, address & 0x0007, ppu_result);
 		return ppu_result;
 	}
-	if (address == 0x4016 || address == 0x4017) {
+	if (address == 0x4017) return 0;
+	if (address == 0x4016) {
 		printf("  read_memory  %04X -> \033[1;45mCTRL\033[0m %04X -> %02X\n", address, address & 0x3FFF, PRG[address & 0x3FFF]);
 getchar();
-		return 0;
+		return get_input();
 	}
 	printf("  read_memory  %04X ERR\n", address);
 	exit(2);
@@ -55,11 +56,17 @@ void write_memory(unsigned short address, unsigned char data) {
 		cpu_hang();
 		return;
 	}
-	if (address >= 0x4000 && address <= 0x4017) {
+	if (address >= 0x4000 && address < 0x4016) {
 		printf("  write_memory %04X -> \033[1;45mCTRL\033[0m %04X -> %02X\n", address, address & 0x000F, data);
 getchar();
 		return;
 	}
+	if (address == 0x4017) return;
+	if (address == 0x4016) {
+		reset_input();
+		return;
+	}
+
 	printf("  write_memory %04X -> %02X ERR\n", address, data);
 	exit(3);
 }

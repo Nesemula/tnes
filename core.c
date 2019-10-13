@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
 	unsigned long long counter = 0;
 	while (counter++ < 20) {
 #else
+		cpu_exec();
 	while (1) {
 #endif
 		ppu_exec();

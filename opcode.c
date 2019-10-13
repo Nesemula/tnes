@@ -569,8 +569,7 @@ static void load_addr_hi(void) {
 
 static void load_addr_hi_add_Y(void) {
 	puts("load_addr_hi_add_Y");
-	effective_address_hi = read_memory(effective_address + 1);
-	effective_address_lo = tmp_data;
+	load_addr_hi();
 	if (effective_address_lo + Y < 0x0100) {
 		effective_address_lo += Y;
 		step++;
@@ -769,6 +768,8 @@ opcode *SBC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, ad
 opcode *INC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, increment_data,    store_data, next };
 opcode *DEC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, decrement_data,    store_data, next };
 
+opcode *ASL_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, shift_left_data,   store_data, next };
+opcode *LSR_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, shift_right_data,  store_data, next };
 opcode *ROL_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, rotate_left_data,  store_data, next };
 opcode *ROR_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, rotate_right_data, store_data, next };
 
@@ -780,6 +781,7 @@ opcode *LDA_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, ad
 opcode *LDX_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, put_data_into_X };
 
 opcode *AND_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_and };
+opcode *ORA_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_or };
 opcode *EOR_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_xor };
 
 opcode *CMP_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, compare_A };
@@ -788,12 +790,29 @@ opcode *ADC_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, ad
 opcode *SBC_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, add_Y_to_addr, load_data, subtract_with_carry };
 
 
+/* INDIRECT X *****************************************************************/
+//opcode *STA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, store_A, next };
+
+//opcode *LDA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, put_data_into_A };
+
+//opcode *AND_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, bitwise_and };
+//opcode *ORA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, bitwise_or };
+//opcode *EOR_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, bitwise_xor };
+
+//opcode *CMP_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, compare_A };
+//
+//opcode *ADC_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, add_with_carry };
+//opcode *SBC_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, subtract_with_carry };
+
+
 /* INDIRECT Y *****************************************************************/
 opcode *STA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi, add_Y_to_addr, store_A, next };
 
 opcode *LDA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, put_data_into_A };
 
+opcode *AND_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_and };
 opcode *ORA_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_or };
+opcode *EOR_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, bitwise_xor };
 
 opcode *CMP_indirectY  [] = { fetch_param_addr_zp, load_addr_lo, load_addr_hi_add_Y, add_Y_to_addr, load_data, compare_A };
 
