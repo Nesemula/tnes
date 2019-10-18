@@ -454,12 +454,6 @@ static void pull_PCH(void) {
 	set_PC(effective_address);
 }
 
-static void pull_PCH_minus_one(void) {
-	puts("pull_PCH");
-	effective_address_hi = read_memory(0x100 | ++S);
-	set_PC(effective_address - 1);
-}
-
 static void push_PCL(void) {
 	puts("push_PCL");
 	write_memory(0x100 | S--, PCL);
@@ -590,11 +584,11 @@ static void read_vector_H(void) {
 }
 
 
-opcode *RST_special    [] = { reset };
+opcode * const RST_special    [] = { reset };
 opcode *DMA_special    [] = { fetch_rubbish, wait_for_mem };
 opcode *ERR_illegal    [] = { terminate };
-opcode *BRK_stack      [] = { fetch_param_data, push_PCH, push_PCL, push_P, read_vector_L, read_vector_H, next };
-opcode *RTI_stack      [] = { fetch_param_data, fetch_rubbish, pull_P, pull_PCL, pull_PCH_minus_one, next };
+opcode *BRK_stack      [] = { fetch_rubbish, push_PCH, push_PCL, push_P, read_vector_L, read_vector_H, next };
+opcode *RTI_stack      [] = { fetch_param_data, fetch_rubbish, pull_P, pull_PCL, pull_PCH, next };
 
 /* IMPLIED ********************************************************************/
 opcode *SEC_implied    [] = { fetch_rubbish, set_flag_C };
@@ -765,12 +759,12 @@ opcode *CMP_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, ad
 opcode *ADC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, add_with_carry };
 opcode *SBC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_X, add_X_to_addr, load_data, subtract_with_carry };
 
-opcode *INC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, increment_data,    store_data, next };
-opcode *DEC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, decrement_data,    store_data, next };
+opcode *INC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, increment_data, store_data, next };
+opcode *DEC_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, decrement_data, store_data, next };
 
-opcode *ASL_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, shift_left_data,   store_data, next };
-opcode *LSR_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, shift_right_data,  store_data, next };
-opcode *ROL_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, rotate_left_data,  store_data, next };
+opcode *ASL_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, shift_left_data, store_data, next };
+opcode *LSR_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, shift_right_data, store_data, next };
+opcode *ROL_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, rotate_left_data, store_data, next };
 opcode *ROR_absoluteX  [] = { fetch_param_addr_lo, fetch_param_addr_hi, add_X_to_addr, load_data, rotate_right_data, store_data, next };
 
 
@@ -791,18 +785,18 @@ opcode *SBC_absoluteY  [] = { fetch_param_addr_lo, fetch_param_addr_hi_add_Y, ad
 
 
 /* INDIRECT X *****************************************************************/
-//opcode *STA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, store_A, next };
+opcode *STA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, store_A, next };
 
-//opcode *LDA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, put_data_into_A };
+opcode *LDA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, load_data, put_data_into_A };
 
-//opcode *AND_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, bitwise_and };
-//opcode *ORA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, bitwise_or };
-//opcode *EOR_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, bitwise_xor };
+opcode *AND_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, load_data, bitwise_and };
+opcode *ORA_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, load_data, bitwise_or };
+opcode *EOR_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, load_data, bitwise_xor };
 
-//opcode *CMP_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, compare_A };
-//
-//opcode *ADC_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, add_with_carry };
-//opcode *SBC_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr, load_addr_lo, load_addr_hi, load_data, subtract_with_carry };
+opcode *CMP_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, load_data, compare_A };
+
+opcode *ADC_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, load_data, add_with_carry };
+opcode *SBC_indirectX  [] = { fetch_param_addr_zp, add_X_to_addr_lo, load_addr_lo, load_addr_hi, load_data, subtract_with_carry };
 
 
 /* INDIRECT Y *****************************************************************/

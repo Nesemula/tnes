@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include "common.h"
 
+extern unsigned char mirroring;
+
 unsigned char FRAME_BUFFER[0xF000];
 unsigned char *CHR; // 0x2000
 unsigned char VRAM[0x800];
@@ -67,7 +69,7 @@ unsigned char ppu_read(unsigned short ppu_register) {
 		ppu_addr += VRAM_address_increment;
 		return tmp;
 	}
-	printf("    ppu_read  %04X ERR\n", ppu_register);
+	fprintf(stdout, "    ppu_read  %04X ERR\n", ppu_register);
 	exit(4);
 }
 
@@ -84,7 +86,6 @@ void ppu_write(unsigned short ppu_register, unsigned char data) {
 		printf("      sprite_pattern_table_address %d\n", sprite_pattern_table_address);
 		printf("      VRAM_address_increment %d\n", VRAM_address_increment);
 		printf("      base_nametable_address %d\n", base_nametable_address);
-//getchar();
 		return;
 	}
 	if (ppu_register == 0x2001) {
@@ -112,7 +113,6 @@ getchar();
 		printf("    ppu_write %04X -> OAMDATA   %02X\n", ppu_register, data);
 		OAM[OAM_address++] = data;
 		printf("      OAM_address[%02X] -> %02X\n", OAM_address - 1, data);
-getchar();
 		return;
 	}
 	if (ppu_register == 0x2005) {
@@ -139,7 +139,6 @@ getchar();
 		else
 			ppu_addr |= data;
 		printf("      ppu_addr %04X\n", ppu_addr);
-//getchar();
 		return;
 	}
 	if (ppu_register == 0x2007) {
@@ -152,44 +151,60 @@ getchar();
 			ppu_addr += VRAM_address_increment;
 			return;
 		}
-		printf("      ppu_addr %04X -> %02X\n", ppu_addr, data);
-		unsigned short tmp = ppu_addr & 0xFFF;
-		printf("      ppu_addr %04X -> %02X\n", tmp, data);
-		if (tmp >= 0x800) tmp -= 0x400;
-		printf("      ppu_addr %04X -> %02X\n", tmp, data);
-		VRAM[tmp] = data;
-		ppu_addr += VRAM_address_increment;
-		return;
+		if (ppu_addr >= 0x2000 && ppu_addr < 0x3000) {
+			unsigned short tmp = ppu_addr & 0x3FF;
+			if (!mirroring) {
+				if (ppu_addr < 0x2800)
+					VRAM[tmp] = data;
+				else if (ppu_addr >= 0x2800)
+					VRAM[tmp + 0x400] = data;
+			} else {
+				if (ppu_addr < 0x2400)
+					VRAM[tmp] = data;
+				else if (ppu_addr < 0x2800)
+					VRAM[tmp + 0x400] = data;
+				else if (ppu_addr < 0x2C00)
+					VRAM[tmp] = data;
+				else // ppu_addr < 0x3000
+					VRAM[tmp + 0x400] = data;
+			}
+			ppu_addr += VRAM_address_increment;
+			return;
+		}
 	}
-	printf("    ppu_write %02X ERR %02X\n", ppu_register, data);
+	fprintf(stdout, "    ppu_write %02X ERR %02X\n", ppu_register, data);
 	exit(5);
 }
 
 void generate_buffer(unsigned char scanline) {
-	int buffer_entry = scanline * 256;
+	int buffer_entry = (scroll_y + scanline) * 256;
+	if ((scroll_y + scanline) > 240)
+		buffer_entry = (scroll_y + scanline) % 240 * 256;
 	int pixel_line = scanline % 8;
-	int attribute;
-	for (int tile = 0; tile < 32; tile++) {
-		attribute = VRAM[(base_nametable_address ? 0x400 : 0) + 0x03C0 + (scanline / 32 * 8) + tile / 4];
-#undef printf
+	int start = scroll_x / 8; // start column
+	int offset = scroll_x % 8; // offset in first and last tile
+	//for (int tile = 0; tile < 32; tile++) {
+	for (int tile = start; tile < 32; tile++) {
+		int attribute = VRAM[(base_nametable_address ? 0x400 : 0) + 0x03C0 + (scanline / 32 * 8) + tile / 4];
 		int line = (scanline / 16);
 		int col = tile / 2;
 		int pallete;
 		//printf("%3d %2d %02X %02X %2d %2d\n", scanline, tile, 0x03C0 + (scanline / 32 * 8) + tile / 4, attribute, col, line);
-		if (line & 1) {
-			if (col & 1)
-				pallete = (attribute & 0xC0) >> 6;
-			else
-				pallete = (attribute & 0x30) >> 4;
-		} else if (col & 1)
+		if (line & 1 && col & 1)
+			pallete = (attribute & 0xC0) >> 6;
+		else if (line & 1)
+			pallete = (attribute & 0x30) >> 4;
+		else if (col & 1)
 			pallete = (attribute & 0x0C) >> 2;
 		else
 			pallete = (attribute & 0x03) >> 0;
 		int pal_addr = pallete * 4;
-#define printf 0&&printf
+
 		int name_table_entry = tile + ((scanline / 8) * 32);
 		int pattern_table_entry = VRAM[name_table_entry + (base_nametable_address ? 0x400 : 0)] * 16 + pixel_line + (background_pattern_table_address ? 0x1000 : 0);
-		for (int pixel = 0; pixel < 8; pixel++) {
+		//for (int pixel = 0; pixel < 8; pixel++) {
+		int p_init = (tile == start) ? offset : 0;
+		for (int pixel = p_init; pixel < 8; pixel++) {
 			int a = CHR[pattern_table_entry] & (0x80 >> pixel);
 			int b = CHR[pattern_table_entry + 8] & (0x80 >> pixel);
 			//FRAME_BUFFER[buffer_entry++] = (a ? 1 : 0) + (b ? 2 : 0);
@@ -197,8 +212,35 @@ void generate_buffer(unsigned char scanline) {
 		}
 		name_table_entry += 16;
 	}
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	for (int tile = 0; tile <= start; tile++) {
+		int attribute = VRAM[(!base_nametable_address ? 0x400 : 0) + 0x03C0 + (scanline / 32 * 8) + tile / 4];
+		int line = (scanline / 16);
+		int col = tile / 2;
+		int pallete;
+		if (line & 1 && col & 1)
+			pallete = (attribute & 0xC0) >> 6;
+		else if (line & 1)
+			pallete = (attribute & 0x30) >> 4;
+		else if (col & 1)
+			pallete = (attribute & 0x0C) >> 2;
+		else
+			pallete = (attribute & 0x03) >> 0;
+		int pal_addr = pallete * 4;
 
+		int name_table_entry = tile + ((scanline / 8) * 32);
+		int pattern_table_entry = VRAM[name_table_entry + (!base_nametable_address ? 0x400 : 0)] * 16 + pixel_line + (background_pattern_table_address ? 0x1000 : 0);
+		int p_end = (tile == start) ? offset : 8;
+		for (int pixel = 0; pixel < p_end; pixel++) {
+			int a = CHR[pattern_table_entry] & (0x80 >> pixel);
+			int b = CHR[pattern_table_entry + 8] & (0x80 >> pixel);
+			FRAME_BUFFER[buffer_entry++] = paletteRAM[pal_addr + (a ? 1 : 0) + (b ? 2 : 0)];
+		}
+		name_table_entry += 16;
+	}
+	//////////////////////////////////////////////////////////////////////////////////////////////////
 	buffer_entry = scanline * 256;
+	if (show_sprites)
 	for (int sprite = 252; sprite >= 0; sprite -= 4) {
 		if (OAM[sprite] >= 0xEF)
 			continue;

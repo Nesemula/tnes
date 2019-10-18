@@ -5,11 +5,13 @@
 
 #define prg_size 0x4000
 #define chr_size 0x2000
+#undef printf
 
 uint8_t *PRG_DATA;
 uint8_t *CHR_DATA;
 uint8_t prg_banks;
 uint8_t chr_banks;
+uint8_t mirroring;
 
 static void calculate_crc32(uint8_t *data, size_t length) {
 	uint32_t crc = 0xFFFFFFFF;
@@ -48,6 +50,8 @@ void load_ROM(const char *file_name) {
 		fclose(file);
 		return;
 	}
+	mirroring = header[6] & 0x01;
+	printf("%s mirroring\n", mirroring ? "Vertical" : "Horizontal");
 
 	prg_banks = header[4];
 	chr_banks = header[5];

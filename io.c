@@ -4,7 +4,6 @@
 #include "SDL2/SDL.h"
 
 static int thread_sdl(void *arg);
-pthread_t tid;
 
 SDL_mutex *mutex;
 SDL_Thread *thread;
@@ -12,9 +11,8 @@ SDL_Window *sdlWindow;
 SDL_Renderer *renderer;
 SDL_Texture *sdlTexture;
 
-Uint32 pix[256 * 240];
-unsigned char pixz[512 * 398 * 4];
-int band = -4096;
+static const Uint8 *key_state;
+static Uint32 pix[256 * 240];
 
 static void SetSDLIcon(SDL_Window* window) {
 	Uint32 color[6] = { 0x00000000, 0x000000FF, 0xD0A000FF, 0xF8D800FF, 0xA07800FF, 0xF8F8F8FF };
@@ -69,11 +67,12 @@ static void SetSDLIcon(SDL_Window* window) {
 }
 
 void initialize_display(void) {
+	key_state = SDL_GetKeyboardState(NULL);
 	thread = SDL_CreateThread(thread_sdl, "thread_sdl", (void *) NULL);
 }
 
 // http://drag.wootest.net/misc/palgen.html
-Uint32 argb[64] = {
+static const Uint32 argb[64] = {
 	0xFF464646, 0xFF00065A, 0xFF000678, 0xFF020673, 0xFF35034C, 0xFF57000E, 0xFF5A0000, 0xFF410000,
 	0xFF120200, 0xFF001400, 0xFF001E00, 0xFF001E00, 0xFF001521, 0xFF000000, 0xFF000000, 0xFF000000,
 	0xFF9D9D9D, 0xFF004AB9, 0xFF0530E1, 0xFF5718DA, 0xFF9F07A7, 0xFFCC0255, 0xFFCF0B00, 0xFFA42300,
@@ -85,20 +84,18 @@ Uint32 argb[64] = {
 };
 
 int key_count = 0;
-const Uint8 *state;
 Uint8 get_input(void) {
-	if (!state) state = SDL_GetKeyboardState(NULL);
 	switch (key_count++) {
-		case 0: return state[SDL_SCANCODE_KP_5];
-		case 1: return state[SDL_SCANCODE_KP_4];
-		case 2: return state[SDL_SCANCODE_KP_6];
-		case 3: return state[SDL_SCANCODE_RETURN];
-		case 4: return state[SDL_SCANCODE_E];
-		case 5: return state[SDL_SCANCODE_D];
-		case 6: return state[SDL_SCANCODE_S];
-		case 7: return state[SDL_SCANCODE_F];
-		default: return 0;
+		case 0: return key_state[SDL_SCANCODE_KP_5];
+		case 1: return key_state[SDL_SCANCODE_KP_4];
+		case 2: return key_state[SDL_SCANCODE_KP_6];
+		case 3: return key_state[SDL_SCANCODE_RETURN];
+		case 4: return key_state[SDL_SCANCODE_E];
+		case 5: return key_state[SDL_SCANCODE_D];
+		case 6: return key_state[SDL_SCANCODE_S];
+		case 7: return key_state[SDL_SCANCODE_F];
 	}
+	return 0;
 }
 
 void reset_input(void) {
@@ -114,8 +111,8 @@ void display_frame(unsigned char *frame) {
 	SDL_PushEvent(&sdlevent);
 }
 
-Uint32 last_sync = 0;
 void sync(void) {
+	static Uint32 last_sync = 0;
 	SDL_LockMutex(mutex);
 #ifdef BENCHMARK
 	static Uint32 ticks = 0;
@@ -139,24 +136,8 @@ void sync(void) {
 	SDL_UnlockMutex(mutex);
 }
 
-void upscale(void) {
-	unsigned pix_index = 0;
-	int scanlines = 0;
-	for (int i = 0; i < 398; i++) {
-		if (i % 5 == 3 || i % 5 == 4) scanlines = 1;
-		else scanlines = 0;
-		for (int j = 0; j < 512*4; j++) {
-			if (scanlines)
-				pixz[i*512*4 + j] = 0x22;
-			else {
-				pixz[i*512*4 + j] = pix[pix_index];
-				if (!(j % 2)) pix_index++;
-			}
-		}
-	}	
-}
-
 void generate_noise(void) {
+	static int band = -4096;
 	int len = 256 * 240,
 		run = -1,
 		color = 0,
@@ -181,8 +162,6 @@ void generate_noise(void) {
 static int thread_sdl(void *arg) {
 	SDL_Init(SDL_INIT_VIDEO);
 
-	//sdlWindow = SDL_CreateWindow("TromboNES", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 398, SDL_WINDOW_SHOWN);
-	//sdlWindow = SDL_CreateWindow("TromboNES", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 256, 240, SDL_WINDOW_SHOWN);
 	sdlWindow = SDL_CreateWindow("fuNEStus", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 720, SDL_WINDOW_SHOWN);
 	
 	SetSDLIcon(sdlWindow);
@@ -193,7 +172,6 @@ static int thread_sdl(void *arg) {
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);
 
-	//sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 398);
 	sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
 	SDL_SetRenderTarget(renderer, sdlTexture);
@@ -209,8 +187,6 @@ static int thread_sdl(void *arg) {
 			}
 			if (event.type == SDL_TEXTINPUT) {
 				//generate_noise();
-				//upscale();
-
 				for (int i = 0; i < 0xF000; i++)
 					pix[i] = argb[fframe[i]];
 				SDL_UpdateTexture(sdlTexture, NULL, pix, 256 * 4);
@@ -227,6 +203,7 @@ static int thread_sdl(void *arg) {
 	SDL_Quit(); 
 
 	(void) arg;
+	exit(0);
 	return 0;
 }
 

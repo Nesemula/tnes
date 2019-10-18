@@ -18,6 +18,7 @@
 #define   IRQ_VECTOR 0xFFFE
 
 typedef void opcode(void);
+typedef opcode * instruction;
 void (*next_op)(void);
 
 typedef union {
@@ -71,7 +72,7 @@ unsigned long long counter = 0;
 
 #include "opcode.c"
 
-opcode **current = RST_special;
+instruction const *current = RST_special;
 
 static void next(void) {
 	(*next_op)();
@@ -87,7 +88,7 @@ static void fetch_opcode(void) {
 		S = 0x00;
 		ungroup_status_flags(0x81);
 	}
-	else  op = 0x24;
+	else  op = 0x01;
 	dbg_data = 0x11;
 #else
 	uint8_t op = read_memory(PC);
@@ -97,6 +98,7 @@ static void fetch_opcode(void) {
 	printf("\nfetch %02X \033[1;33m %s \033[0m %s\n", op, mnemonic[op], addressing[op]);
 	step = 0;
 	switch (op) {
+		case 0x01: current = ORA_indirectX;   break;
 		case 0x05: current = ORA_zeropage;    break;
 		case 0x06: current = ASL_zeropage;    break;
 		case 0x08: current = PHP_stack;       break;
@@ -113,6 +115,7 @@ static void fetch_opcode(void) {
 		case 0x1D: current = ORA_absoluteX;   break;
 		case 0x1E: current = ASL_absoluteX;   break;
 		case 0x20: current = JSR_absolute;    break;
+		case 0x21: current = AND_indirectX;   break;
 		case 0x24: current = BIT_zeropage;    break;
 		case 0x25: current = AND_zeropage;    break;
 		case 0x26: current = ROL_zeropage;    break;
@@ -131,6 +134,7 @@ static void fetch_opcode(void) {
 		case 0x3D: current = AND_absoluteX;   break;
 		case 0x3E: current = ROL_absoluteX;   break;
 		case 0x40: current = RTI_stack;       break;
+		case 0x41: current = EOR_indirectX;   break;
 		case 0x45: current = EOR_zeropage;    break;
 		case 0x46: current = LSR_zeropage;    break;
 		case 0x48: current = PHA_stack;       break;
@@ -148,6 +152,7 @@ static void fetch_opcode(void) {
 		case 0x5D: current = EOR_absoluteX;   break;
 		case 0x5E: current = LSR_absoluteX;   break;
 		case 0x60: current = RTS_stack;       break;
+		case 0x61: current = ADC_indirectX;   break;
 		case 0x65: current = ADC_zeropage;    break;
 		case 0x66: current = ROR_zeropage;    break;
 		case 0x68: current = PLA_stack;       break;
@@ -164,6 +169,7 @@ static void fetch_opcode(void) {
 		case 0x79: current = ADC_absoluteY;   break;
 		case 0x7D: current = ADC_absoluteX;   break;
 		case 0x7E: current = ROR_absoluteX;   break;
+		case 0x81: current = STA_indirectX;   break;
 		case 0x84: current = STY_zeropage;    break;
 		case 0x85: current = STA_zeropage;    break;
 		case 0x86: current = STX_zeropage;    break;
@@ -182,7 +188,7 @@ static void fetch_opcode(void) {
 		case 0x9A: current = TXS_implied;     break;
 		case 0x9D: current = STA_absoluteX;   break;
 		case 0xA0: current = LDY_immediate;   break;
-		//case 0xA1: current = LDA_indirectX;   break;
+		case 0xA1: current = LDA_indirectX;   break;
 		case 0xA2: current = LDX_immediate;   break;
 		case 0xA4: current = LDY_zeropage;    break;
 		case 0xA5: current = LDA_zeropage;    break;
@@ -205,6 +211,7 @@ static void fetch_opcode(void) {
 		case 0xBD: current = LDA_absoluteX;   break;
 		case 0xBE: current = LDX_absoluteY;   break;
 		case 0xC0: current = CPY_immediate;   break;
+		case 0xC1: current = CMP_indirectX;   break;
 		case 0xC4: current = CPY_zeropage;    break;
 		case 0xC5: current = CMP_zeropage;    break;
 		case 0xC6: current = DEC_zeropage;    break;
@@ -223,6 +230,7 @@ static void fetch_opcode(void) {
 		case 0xDD: current = CMP_absoluteX;   break;
 		case 0xDE: current = DEC_absoluteX;   break;
 		case 0xE0: current = CPX_immediate;   break;
+		case 0xE1: current = SBC_indirectX;   break;
 		case 0xE4: current = CPX_zeropage;    break;
 		case 0xE5: current = SBC_zeropage;    break;
 		case 0xE6: current = INC_zeropage;    break;
