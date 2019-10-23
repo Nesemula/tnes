@@ -29,11 +29,13 @@ unsigned char read_memory(unsigned short address) {
 	}
 	if (address == 0x4017) return 0;
 	if (address == 0x4016) {
-		printf("  read_memory  %04X -> \033[1;45mCTRL\033[0m %04X -> %02X\n", address, address & 0x3FFF, PRG[address & 0x3FFF]);
+		unsigned char i = get_input();
+		printf("  read_memory  %04X -> \033[1;45mJOY\033[0m %04X -> %02X\n", address, address & 0x3FFF, i);
 getchar();
-		return get_input();
+		return i;
 	}
-	printf("  read_memory  %04X ERR\n", address);
+	fprintf(stdout, "  read_memory  %04X ERR\n", address);
+	int x; scanf("%d", &x);
 	exit(2);
 }
 
