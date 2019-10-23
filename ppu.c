@@ -41,11 +41,11 @@ char show_background_in_leftmost_8_pixels = 0;
 
 // 0x2002 PPUSTATUS
 char vblank = 0;
-char sprite_zero_hit = 0;
+char sprite_zero_hit = 1;
 char sprite_overflow = 0;
 
 // 0x2003 OAMADDR
-unsigned char OAM_address = 0;
+unsigned char obj_addr = 0;
 
 // 0x2005 PPUSCROLL
 bool last_scroll_write = false;
@@ -88,13 +88,34 @@ unsigned char ppu_read(unsigned short ppu_register) {
 	}
 	if (ppu_register == 0x2007) {
 		static unsigned char data = 0;
-		unsigned char tmp = data;
-		printf("      ppu_addr %04X -> %02X\n", ppu_addr & 0x07FF, data);
-		data = VRAM[ppu_addr & 0x07FF];
-		ppu_addr += VRAM_address_increment;
-		return tmp;
+		unsigned char read_buffer = data;
+		printf("      ppu_addr %04X -> %02X\n", ppu_addr, data);
+		if (ppu_addr >= 0x3F00 && ppu_addr < 0x4000) {
+			read_buffer = data = paletteRAM[ppu_addr & 0x1F];
+			ppu_addr += VRAM_address_increment;
+			return read_buffer;
+		}
+		if (ppu_addr >= 0x2000 && ppu_addr < 0x3F00) {
+			unsigned short real_addr = ppu_addr & 0x3FF;
+			unsigned short full_addr = ppu_addr & 0xFFF;
+			if (full_addr < 0x400)
+				data = nametable_1[real_addr];
+			else if (full_addr < 0x800)
+				data = nametable_2[real_addr];
+			else if (full_addr < 0xC00)
+				data = nametable_3[real_addr];
+			else // full_addr < 0x1000
+				data = nametable_4[real_addr];
+			ppu_addr += VRAM_address_increment;
+			return read_buffer;
+		}
+		if (ppu_addr < 0x2000) {
+			data = CHR[ppu_addr];
+			ppu_addr += VRAM_address_increment;
+			return read_buffer;
+		}
 	}
-	fprintf(stdout, "    ppu_read  %04X ERR\n", ppu_register);
+	fprintf(stdout, "    ppu_read %04X %04X %04X\n", ppu_register, ppu_addr, ppu_addr & 0xFFF);
 	exit(4);
 }
 
@@ -156,14 +177,14 @@ getchar();
 	}
 	if (ppu_register == 0x2003) {
 		printf("    ppu_write %04X -> OAMADDR   %02X\n", ppu_register, data);
-		OAM_address = data;
+		obj_addr = data;
 getchar();
 		return;
 	}
 	if (ppu_register == 0x2004) {
 		printf("    ppu_write %04X -> OAMDATA   %02X\n", ppu_register, data);
-		OAM[OAM_address++] = data;
-		printf("      OAM_address[%02X] -> %02X\n", OAM_address - 1, data);
+		printf("      obj_addr[%02X] -> %02X\n", obj_addr, data);
+		OAM[obj_addr++] = data;
 		return;
 	}
 	if (ppu_register == 0x2005) {
@@ -174,10 +195,10 @@ getchar();
 			scroll_x = data;
 		else
 			scroll_y = data;
-		if (scroll_x)
-			fprintf(stdout, "      scroll_x %d\n", scroll_x);
-		if (scroll_y)
-			fprintf(stdout, "      scroll_y %d\n", scroll_y);
+		if (scroll_y) {
+			fprintf(stdout, "Y %d\n", scroll_y);
+			//int x; scanf("%d", &x);
+		}
 		return;
 	}
 	if (ppu_register == 0x2006) {
