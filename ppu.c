@@ -26,6 +26,7 @@ char is_rendering = 0;
 
 // 0x2000 PPUCTRL
 char NMI_enabled = 0;
+char sprite_size = 0;
 char background_pattern_table_address = 0;
 char sprite_pattern_table_address = 0;
 char VRAM_address_increment = 1; // per CPU read/write of PPUDATA
@@ -41,7 +42,7 @@ char show_background_in_leftmost_8_pixels = 0;
 
 // 0x2002 PPUSTATUS
 char vblank = 0;
-char sprite_zero_hit = 1;
+char sprite_zero_hit = 0;
 char sprite_overflow = 0;
 
 // 0x2003 OAMADDR
@@ -123,15 +124,18 @@ void ppu_write(unsigned short ppu_register, unsigned char data) {
 	if (ppu_register == 0x2000) {
 		printf("    ppu_write %04X -> PPUCTRL   %02X\n", ppu_register, data);
 		NMI_enabled = (data & 0x80) >> 7;
+		sprite_size = (data & 0x20) >> 5;
 		background_pattern_table_address = (data & 0x10) >> 4;
 		sprite_pattern_table_address = (data & 0x08) >> 3;
 		VRAM_address_increment = (data & 0x04) ? 32 : 1;
 		base_nametable_address = (data & 0x03);
 		printf("      NMI_enabled %d\n", NMI_enabled);
+		printf("      sprite_size %d\n", sprite_size);
 		printf("      background_pattern_table_address %d\n", background_pattern_table_address);
 		printf("      sprite_pattern_table_address %d\n", sprite_pattern_table_address);
 		printf("      VRAM_address_increment %d\n", VRAM_address_increment);
 		printf("      base_nametable_address %d\n", base_nametable_address);
+		if (sprite_size) fprintf(stdout,"      sprite_size %d\n", sprite_size);
 		switch (data & 0x03) {
 			case 0:
 				nametable_base = nametable_1;
@@ -195,10 +199,6 @@ getchar();
 			scroll_x = data;
 		else
 			scroll_y = data;
-		if (scroll_y) {
-			fprintf(stdout, "Y %d\n", scroll_y);
-			//int x; scanf("%d", &x);
-		}
 		return;
 	}
 	if (ppu_register == 0x2006) {
@@ -244,14 +244,15 @@ getchar();
 }
 
 void generate_buffer(unsigned char scanline) {
-	int buffer_entry = (scroll_y + scanline) * 256;
+	unsigned char pscan = scanline;
+	int buffer_entry = scanline * 256;
 	unsigned char *nametable_baseZ, *nametable_horzW;
-	if (scanline >= scroll_y) {
-		buffer_entry = (scanline - scroll_y) * 256;
+	if (scanline + scroll_y < 240) {
+		scanline = (scanline + scroll_y);
 		nametable_baseZ = nametable_base;
 		nametable_horzW = nametable_horz;
 	} else {
-		buffer_entry = (scroll_y + scanline) % 240 * 256;
+		scanline = ((scanline + scroll_y) % 240);
 		nametable_baseZ = nametable_vert;
 		nametable_horzW = nametable_diag;
 	}
@@ -315,15 +316,15 @@ void generate_buffer(unsigned char scanline) {
 		name_table_entry += 16;
 	}
 	//////////////////////////////////////////////////////////////////////////////////////////////////
-	buffer_entry = scanline * 256;
+	buffer_entry = pscan * 256;
 	if (show_sprites)
 		for (int sprite = 252; sprite >= 0; sprite -= 4) {
 			if (OAM[sprite] >= 0xEF)
 				continue;
-			if ((OAM[sprite]+1) > scanline || (OAM[sprite]+1) < scanline - 7)
+			if ((OAM[sprite]+1) > pscan || (OAM[sprite]+1) < pscan - 7)
 				continue;
 			int oam_table_entry = OAM[sprite + 1];
-			int oam_line = (OAM[sprite + 2] & 0x80) ? (OAM[sprite]+8 - scanline) : (scanline - OAM[sprite]-1); // vertical mirror
+			int oam_line = (OAM[sprite + 2] & 0x80) ? (OAM[sprite]+8 - pscan) : (pscan - OAM[sprite]-1); // vertical mirror
 			int pattern_table_entry = oam_table_entry * 16 + oam_line + (sprite_pattern_table_address ? 0x1000 : 0);
 			int pal_addr = 0x10 + (OAM[sprite + 2] & 0x03) * 4;
 			if (OAM[sprite + 2] & 0x40) // horizontal mirrror
@@ -333,6 +334,8 @@ void generate_buffer(unsigned char scanline) {
 					if (a + b)
 						if (!((OAM[sprite + 2] & 0x20) && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0]))
 							FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] = paletteRAM[pal_addr + (a ? 1 : 0) + (b ? 2 : 0)];
+					if (a + b && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0])
+						sprite_zero_hit = 1;
 				}
 			else // no horizontal mirror
 				for (int pixel = 0; pixel < 8; pixel++) {
@@ -341,6 +344,8 @@ void generate_buffer(unsigned char scanline) {
 					if (a + b)
 						if (!((OAM[sprite + 2] & 0x20) && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0]))
 							FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] = paletteRAM[pal_addr + (a ? 1 : 0) + (b ? 2 : 0)];
+					if (a + b && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0])
+						sprite_zero_hit = 1;
 				}
 
 		}
@@ -407,6 +412,7 @@ void run_pre_render_scanline(void) {
 		scanline = pixel = 0;
 		sync();
 	}
+	sprite_zero_hit = 0;
 }
 
 void ppu_exec(void) {
