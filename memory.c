@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "common.h"
+#include <inttypes.h>
 
 unsigned short dma_address;
 unsigned short dma_cycle;
@@ -8,6 +9,7 @@ unsigned short dma_write_cycle;
 
 unsigned char *PRG;
 unsigned char RAM[0x800];
+unsigned char *stack = &RAM[0x100];
 
 void map_program_data(unsigned char *prg_data) {
 	PRG = prg_data;

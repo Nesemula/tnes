@@ -91,7 +91,8 @@ unsigned char ppu_read(unsigned short ppu_register) {
 		static unsigned char data = 0;
 		unsigned char read_buffer = data;
 		printf("      ppu_addr %04X -> %02X\n", ppu_addr, data);
-		if (ppu_addr >= 0x3F00 && ppu_addr < 0x4000) {
+		//if (ppu_addr >= 0x3F00 && ppu_addr < 0x4000) {
+		if (0) {
 			read_buffer = data = paletteRAM[ppu_addr & 0x1F];
 			ppu_addr += VRAM_address_increment;
 			return read_buffer;

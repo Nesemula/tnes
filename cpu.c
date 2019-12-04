@@ -29,11 +29,18 @@ typedef union {
 	uint16_t full;
 } address;
 
-uint8_t A = 0x00;
-uint8_t X = 0x00;
-uint8_t Y = 0x00;
-uint8_t S = 0x00;
-address program_counter;
+struct {
+	uint8_t a;
+	uint8_t x;
+	uint8_t y;
+	uint8_t s;
+	address program_counter;
+} reg;
+#define A reg.a
+#define X reg.x
+#define Y reg.y
+#define S reg.s
+#define program_counter reg.program_counter
 
 struct {
 	bool n;
@@ -44,13 +51,6 @@ struct {
 	bool z;
 	bool c;
 } flag;
-#define flag_n flag.n
-#define flag_v flag.v
-#define flag_b flag.b
-#define flag_d flag.d
-#define flag_i flag.i
-#define flag_z flag.z
-#define flag_c flag.c
 
 uint_fast8_t step = 0;
 
@@ -65,35 +65,20 @@ void update_PC(void) {
 }
 
 // DEBUG
-int dbg = 0;
-uint8_t dbg_data;
-uint8_t IR;
+uint8_t op;
 unsigned long long counter = 0;
+char *micro_op;
 
 #include "opcode.c"
 
 instruction const *current = RST_special;
 
-static void next(void) {
+static void next_operation(void) {
 	(*next_op)();
 }
 
 static void fetch_opcode(void) {
-#if DBG
-	unsigned char op = 0x24;
-	if (!dbg++) {
-		A = 0xaa;
-		X = 0xff;
-		Y = 0xff;
-		S = 0x00;
-		ungroup_status_flags(0x81);
-	}
-	else  op = 0x01;
-	dbg_data = 0x11;
-#else
-	uint8_t op = read_memory(PC);
-#endif
-	IR = op;
+	op = read_memory(PC);
 	set_PC(PC + 1);
 	printf("\nfetch %02X \033[1;33m %s \033[0m %s\n", op, mnemonic[op], addressing[op]);
 	step = 0;
@@ -258,7 +243,7 @@ static void wait_for_mem(void) {
 		step--;
 	else {
 		//getchar();
-		next();
+		next_operation();
 	}
 }
 
@@ -267,7 +252,7 @@ static void reset(void) {
 	printf("\nreset %02X \033[1;33m %s \033[0m %s\n", op, mnemonic[op], addressing[op]);
 	read_memory(PC);
 	set_PC(PC + 1);
-	flag_b = false;
+	flag.b = false;
 	step = 0;
 	current = BRK_stack;
 	next_op = &fetch_opcode;
@@ -294,7 +279,7 @@ void cpu_hang(void) {
 
 void cpu_interrupt(void) {
 	next_op = &nmi_setup;
-	flag_b = false;
+	flag.b = false;
 }
 
 void cpu_exec(void) {
