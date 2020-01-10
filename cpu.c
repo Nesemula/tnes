@@ -5,10 +5,6 @@
 #include "common.h"
 #include "debug.h"
 
-#define PC  program_counter.full
-#define PCH program_counter.part.high
-#define PCL program_counter.part.low
-
 #define effective_address    effective_addr.full
 #define effective_address_hi effective_addr.part.high
 #define effective_address_lo effective_addr.part.low
@@ -34,13 +30,22 @@ struct {
 	uint8_t x;
 	uint8_t y;
 	uint8_t s;
-	address program_counter;
+	union {
+		struct {
+			uint8_t pcl;
+			uint8_t pch;
+		};
+		uint16_t pc;
+	};
 } reg;
-#define A reg.a
-#define X reg.x
-#define Y reg.y
-#define S reg.s
-#define program_counter reg.program_counter
+
+#define A   reg.a
+#define X   reg.x
+#define Y   reg.y
+#define S   reg.s
+#define PC  reg.pc
+#define PCH reg.pch
+#define PCL reg.pcl
 
 struct {
 	bool n;

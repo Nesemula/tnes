@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "common.h"
 
 #define prg_size 0x4000
@@ -55,6 +56,7 @@ void load_ROM(const char *file_name) {
 
 	prg_banks = header[4];
 	chr_banks = header[5];
+	printf("CHR x %d - PRG x %d\n", chr_banks, prg_banks);
 
 	invalid |= (header[0] != 'N' || header[1] != 'E' || header[2] != 'S' || header[3] != 0x1A);
 	invalid |= (prg_size * prg_banks + chr_size * chr_banks + sizeof(header)) != file_size;
@@ -65,11 +67,14 @@ void load_ROM(const char *file_name) {
 		return;
 	}
 
-	PRG_DATA = malloc(prg_size * prg_banks);
+	PRG_DATA = malloc(prg_size * (prg_banks == 1 ? 2 : prg_banks));
 	if (!PRG_DATA || !fread(PRG_DATA, 1, prg_size * prg_banks, file)) {
 		puts("Cannot build PRG data.");
 		return;
 	}
+
+	if (prg_banks == 1)
+		memcpy(&PRG_DATA[prg_size], &PRG_DATA[0], prg_size);
 
 	// (chr_banks == 0) means CHR is RAM
 	CHR_DATA = malloc(chr_size * (chr_banks ? chr_banks : 1));
