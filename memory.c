@@ -17,8 +17,8 @@ void map_program_data(unsigned char *prg_data) {
 
 unsigned char read_memory(unsigned short address) {
 	if (address > 0x7FFF) {
-		printf("  read_memory  %04X -> PRG %04X -> %02X\n", address, address & 0x3FFF, PRG[address & 0x3FFF]);
-		return PRG[address & 0x3FFF];
+		printf("  read_memory  %04X -> PRG %04X -> %02X\n", address, address & 0x7FFF, PRG[address & 0x7FFF]);
+		return PRG[address & 0x7FFF];
 	}
 	if (address < 0x2000) {
 		printf("  read_memory  %04X -> RAM %04X -> %02X\n", address, address & 0x07FF, RAM[address & 0x07FF]);

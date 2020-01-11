@@ -216,7 +216,7 @@ getchar();
 	}
 	if (ppu_register == 0x2007) {
 		printf("    ppu_write %04X -> PPUDATA   %02X\n", ppu_register, data);
-		if (ppu_addr >= 0x3F00 && ppu_addr < 0x4000) {
+		if (ppu_addr >= 0x3F00 && ppu_addr < 0x3f20){//0x4000) {
 			unsigned char low_nibble = ppu_addr & 0xF;
 			if (!(low_nibble % 4)) // addresses 0x3F00, 0x3F04, 0x3F08, 0x3F0C, 0x3100, 0x3F14, 0x3F18, 0x3F1C
 				paletteRAM[low_nibble] = paletteRAM[low_nibble + 0x10] = data;
@@ -261,13 +261,13 @@ void generate_buffer(unsigned char scanline) {
 	int pixel_line = scanline % 8;
 	int start = scroll_x / 8; // start column
 	int offset = scroll_x % 8; // offset in first and last tile
-	//for (int tile = 0; tile < 32; tile++) {
+
 	for (int tile = start; tile < 32; tile++) {
 		int attribute = nametable_baseZ[0x03C0 + (scanline / 32 * 8) + tile / 4];
 		int line = (scanline / 16);
 		int col = tile / 2;
 		int pallete;
-		//printf("%3d %2d %02X %02X %2d %2d\n", scanline, tile, 0x03C0 + (scanline / 32 * 8) + tile / 4, attribute, col, line);
+
 		if (line & 1 && col & 1)
 			pallete = (attribute & 0xC0) >> 6;
 		else if (line & 1)
@@ -280,12 +280,10 @@ void generate_buffer(unsigned char scanline) {
 
 		int name_table_entry = tile + ((scanline / 8) * 32);
 		int pattern_table_entry = nametable_baseZ[name_table_entry] * 16 + pixel_line + (background_pattern_table_address ? 0x1000 : 0);
-		//for (int pixel = 0; pixel < 8; pixel++) {
 		int p_init = (tile == start) ? offset : 0;
 		for (int pixel = p_init; pixel < 8; pixel++) {
 			int a = CHR[pattern_table_entry] & (0x80 >> pixel);
 			int b = CHR[pattern_table_entry + 8] & (0x80 >> pixel);
-			//FRAME_BUFFER[buffer_entry++] = (a ? 1 : 0) + (b ? 2 : 0);
 			FRAME_BUFFER[buffer_entry++] = paletteRAM[show_background ? pal_addr + (a ? 1 : 0) + (b ? 2 : 0) : pal_addr];
 		}
 		name_table_entry += 16;
@@ -335,7 +333,7 @@ void generate_buffer(unsigned char scanline) {
 					if (a + b)
 						if (!((OAM[sprite + 2] & 0x20) && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0]))
 							FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] = paletteRAM[pal_addr + (a ? 1 : 0) + (b ? 2 : 0)];
-					if (a + b && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0])
+					if (sprite < 4 && a + b && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0])
 						sprite_zero_hit = 1;
 				}
 			else // no horizontal mirror
@@ -345,7 +343,7 @@ void generate_buffer(unsigned char scanline) {
 					if (a + b)
 						if (!((OAM[sprite + 2] & 0x20) && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0]))
 							FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] = paletteRAM[pal_addr + (a ? 1 : 0) + (b ? 2 : 0)];
-					if (a + b && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0])
+					if (sprite < 4 && a + b && FRAME_BUFFER[buffer_entry + OAM[sprite + 3] + pixel] != paletteRAM[0])
 						sprite_zero_hit = 1;
 				}
 
