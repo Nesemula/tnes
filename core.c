@@ -1,24 +1,31 @@
 #include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include "common.h"
 
 int main(int argc, char *argv[]) {
+	fprintf(stdout, "NES emulator\n");
 	load_ROM(argc > 1 ? argv[1] : "donkeykong.nes");
-	initialize_display();
-	printf("T-NES\n");
-	//for (int i = 0; i < 25; i++)
-		//ppu_exec();
-#if DBG
-	unsigned long long counter = 0;
-	while (counter++ < 20) {
-#else
+	io_setup();
+	ppu_setup();
+
+	while (true) {
+		ppu_run();
+		ppu_run();
 		cpu_exec();
-	while (1) {
-#endif
-		ppu_exec();
-		ppu_exec();
-		ppu_exec();
+		ppu_run();
+		ppu_run();
+		ppu_run();
 		cpu_exec();
+		ppu_run();
+		ppu_run();
+		ppu_run();
+		cpu_exec();
+		ppu_run();
+		ppu_run();
+		ppu_run();
+		cpu_exec();
+		ppu_run();
 	}
-	getchar();
 }
 

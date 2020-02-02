@@ -1,7 +1,7 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include "common.h"
-#include <inttypes.h>
 
 unsigned short dma_address;
 unsigned short dma_cycle;
@@ -37,8 +37,7 @@ getchar();
 		return i;
 	}
 	fprintf(stdout, "  read_memory  %04X ERR\n", address);
-	int x; scanf("%d", &x);
-	exit(2);
+	return 0x00;
 }
 
 void write_memory(unsigned short address, unsigned char data) {
@@ -72,7 +71,6 @@ getchar();
 	}
 
 	printf("  write_memory %04X -> %02X ERR\n", address, data);
-	exit(3);
 }
 
 int memory_auto_transfer(void) {

@@ -36,7 +36,6 @@ inline static void ungroup_status_flags(uint8_t p) {
 
 static void terminate(void) {
 	puts("terminate");
-	force_display();
 	fprintf(stdout, "\nfetch %02X \033[1;33m %s \033[0m %s #%llu\n",
 		op, mnemonic[op], addressing[op], counter);
 	int x;

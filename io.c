@@ -66,7 +66,7 @@ static void SetSDLIcon(SDL_Window* window) {
 
 }
 
-void initialize_display(void) {
+void io_setup(void) {
 	key_state = SDL_GetKeyboardState(NULL);
 	thread = SDL_CreateThread(thread_sdl, "thread_sdl", (void *) NULL);
 }
@@ -122,7 +122,7 @@ void sync(void) {
 		ticks = SDL_GetTicks();
 	if (SDL_GetTicks() - ticks >= seconds * 1000) {
 		char buffer[24]; 
-		sprintf(buffer, "fuNEStus - %dfps", frames / seconds);
+		sprintf(buffer, "funestus - %dfps", frames / seconds);
 		SDL_SetWindowTitle(sdlWindow, buffer);
 		seconds++;
 	}
@@ -162,7 +162,7 @@ void generate_noise(void) {
 static int thread_sdl(void *arg) {
 	SDL_Init(SDL_INIT_VIDEO);
 
-	sdlWindow = SDL_CreateWindow("fuNEStus", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 720, SDL_WINDOW_SHOWN);
+	sdlWindow = SDL_CreateWindow("funestus", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 720, SDL_WINDOW_SHOWN);
 	
 	SetSDLIcon(sdlWindow);
 	renderer = SDL_CreateRenderer(sdlWindow, -1, 0);

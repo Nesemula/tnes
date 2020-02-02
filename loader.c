@@ -85,7 +85,7 @@ void load_ROM(const char *file_name) {
 
 	calculate_crc32(PRG_DATA, prg_size);
 	map_program_data(PRG_DATA);
-	map_character_data(CHR_DATA);
+	map_character_data(CHR_DATA, mirroring);
 	fclose(file);
 }
 

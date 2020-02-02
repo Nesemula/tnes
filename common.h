@@ -4,15 +4,15 @@ void cpu_interrupt(void);
 void cpu_hang(void);
 
 // PPU
-void ppu_exec(void);
-void map_character_data(unsigned char *data);
-void ppu_write(unsigned short ppu_register, unsigned char data);
-unsigned char ppu_read(unsigned short ppu_register);
-void force_display(void);
+void ppu_setup(void);
+void ppu_run(void);
+void map_character_data(uint8_t *chr_data, uint8_t mirroring);
+void ppu_write(uint16_t ppu_register, uint8_t data);
+uint8_t ppu_read(uint16_t ppu_register);
 
 // GUI
 void sync(void);
-void initialize_display(void);
+void io_setup(void);
 void display_frame(unsigned char *frame);
 unsigned char get_input(void);
 void reset_input(void);
@@ -27,8 +27,6 @@ void write_memory(unsigned short address, unsigned char data);
 int memory_auto_transfer(void);
 
 #define getchar 0&&getchar
-#ifndef DBGOUT
 #define puts 0&&puts
 #define printf 0&&printf
-#endif
 
