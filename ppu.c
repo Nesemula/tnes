@@ -194,27 +194,19 @@ static unsigned int tick;
 
 static void draw_pixel(void) {
 	//fprintf(stdout, "draw_pixel %d\n", _pixel);
-	uint16_t chr_index = nametable[ctrl.base_nametable_index][(scroll.coarse_y << 5) + scroll.coarse_x];
-	uint16_t pix = 0x0000 | (ctrl.background_pattern_table_index << 12) | (chr_index << 4) | scroll.fine_y;
-	int a = chr[pix] & (0x80 >> scroll.fine_x);
-	int b = chr[pix | 0x0008] & (0x80 >> scroll.fine_x);
+	unsigned attribute = nametable[ctrl.base_nametable_index][0x03C0 + (((scroll.y & 0xE0) >> 2) | (scroll.x >> 5))];
+	unsigned quadrant = ((scroll.y & 0x10) >> 2) | ((scroll.x & 0x10) >> 3);
+	unsigned pal_addr = ((attribute >> quadrant) << 2) & 0x0C;
 
-	int attribute = nametable[ctrl.base_nametable_index][0x03C0 + (((scroll.y & 0xE0) >> 2) | (scroll.x >> 5))];
-	int _pallete;
-	int line = scroll.y & 0x10;
-	int col = scroll.x & 0x10;
+	if (mask.show_background) {
+		uint16_t chr_index = nametable[ctrl.base_nametable_index][(scroll.coarse_y << 5) + scroll.coarse_x];
+		uint16_t pix = 0x0000 | (ctrl.background_pattern_table_index << 12) | (chr_index << 4) | scroll.fine_y;
+		int a = chr[pix] & (0x80 >> scroll.fine_x);
+		int b = chr[pix | 0x0008] & (0x80 >> scroll.fine_x);
+		pal_addr += (a ? 1 : 0) + (b ? 2 : 0);
+	}
 
-	if (line && col)
-		_pallete = (attribute & 0xC0) >> 6;
-	else if (line)
-		_pallete = (attribute & 0x30) >> 4;
-	else if (col)
-		_pallete = (attribute & 0x0C) >> 2;
-	else
-		_pallete = (attribute & 0x03) >> 0;
-	int pal_addr = _pallete << 2;
-
-	frame_buffer[_pixel++] = palette[mask.show_background ? pal_addr + (a ? 1 : 0) + (b ? 2 : 0) : pal_addr];
+	frame_buffer[_pixel++] = palette[pal_addr];
 	scroll.x++;
 }
 

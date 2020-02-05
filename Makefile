@@ -2,7 +2,7 @@ CC = gcc
 FLAGS = -O3 -Wall -Wextra -pedantic -march=native -flto
 
 funestus : obj/core.o obj/cpu.o obj/ppu.o obj/memory.o obj/loader.o obj/io.o -lSDL2 -lSDL2main
-	$(CC) -s $^ -o $@ -flto
+	$(CC) -s $^ -o $@
 	@ls -sh --color $@
 
 obj/core.o : core.c common.h
