@@ -10,6 +10,7 @@ typedef void render(void);
 static render *full_frame[0x015CFE]; // 341x262
 
 static uint8_t *nametable[4];
+static uint8_t *current_nametable;
 static uint8_t frame_buffer[0xF000]; // 256x240
 static uint8_t *chr; // 0x2000
 static uint8_t vram[0x800]; // two nametables
@@ -50,7 +51,7 @@ static uint8_t oam_addr;
 
 // 0x2005 PPUSCROLL
 static struct {
-	uint8_t temp_x;
+	uint8_t preset_x;
 	union {
 		uint8_t x;
 		struct {
@@ -58,7 +59,7 @@ static struct {
 			uint8_t coarse_x: 5;
 		};
 	};
-	uint8_t temp_y;
+	uint8_t preset_y;
 	union {
 		uint8_t y;
 		struct {
@@ -151,9 +152,9 @@ void ppu_write(uint16_t ppu_register, uint8_t data) {
 	// PPUSCROLL
 	if (ppu_register == 0x2005) {
 		if (!latch_2nd_write)
-			scroll.temp_x = data;
+			scroll.preset_x = data;
 		else
-			scroll.temp_y = data;
+			scroll.preset_y = data;
 		latch_2nd_write = !latch_2nd_write;
 		return;
 	}
@@ -194,12 +195,12 @@ static unsigned int tick;
 
 static void draw_pixel(void) {
 	//fprintf(stdout, "draw_pixel %d\n", _pixel);
-	unsigned attribute = nametable[ctrl.base_nametable_index][0x03C0 + (((scroll.y & 0xE0) >> 2) | (scroll.x >> 5))];
+	unsigned attribute = current_nametable[0x03C0 + (((scroll.y & 0xE0) >> 2) | (scroll.x >> 5))];
 	unsigned quadrant = ((scroll.y & 0x10) >> 2) | ((scroll.x & 0x10) >> 3);
 	unsigned pal_addr = ((attribute >> quadrant) << 2) & 0x0C;
 
 	if (mask.show_background) {
-		uint16_t chr_index = nametable[ctrl.base_nametable_index][(scroll.coarse_y << 5) + scroll.coarse_x];
+		uint16_t chr_index = current_nametable[(scroll.coarse_y << 5) + scroll.coarse_x];
 		uint16_t pix = 0x0000 | (ctrl.background_pattern_table_index << 12) | (chr_index << 4) | scroll.fine_y;
 		int a = chr[pix] & (0x80 >> scroll.fine_x);
 		int b = chr[pix | 0x0008] & (0x80 >> scroll.fine_x);
@@ -207,11 +208,14 @@ static void draw_pixel(void) {
 	}
 
 	frame_buffer[_pixel++] = palette[pal_addr];
-	scroll.x++;
+	if (!++scroll.x)
+		current_nametable = nametable[ctrl.base_nametable_index ^ 0x1];
 }
 
 static void increment_vertical_scroll(void) {
 	//fprintf(stdout, "increment_vertical_scroll %d %d\n", scroll.coarse_y, scroll.fine_y);
+	current_nametable = nametable[ctrl.base_nametable_index];
+	scroll.x = scroll.preset_x;
 	scroll.y++;
 }
 
@@ -237,8 +241,10 @@ static void prepare_next_frame(void) {
 	tick = (rendering_enabled && odd_frame) ? 1 : 0;
 	odd_frame = !odd_frame;
 	_pixel = 0;
-	display_frame(frame_buffer);
+	current_nametable = nametable[ctrl.base_nametable_index];
+	scroll.x = scroll.preset_x;
 	scroll.y = 0;
+	display_frame(frame_buffer);
 	sync();
 }
 
@@ -258,6 +264,7 @@ void ppu_setup(void) {
 	full_frame[82182] = set_vblank_flag;
 	full_frame[89002] = unset_vblank_flag;
 	full_frame[89341] = prepare_next_frame;
+	current_nametable = nametable[0];
 }
 
 void ppu_run(void) {
