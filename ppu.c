@@ -27,6 +27,7 @@ static struct {
 	bool sprite_double_size;
 	bool background_pattern_table_index;
 	bool sprite_pattern_table_index;
+	uint_fast8_t preset_nametable_index: 2;
 	uint_fast8_t base_nametable_index: 2;
 	enum direction address_increment;
 } ctrl;
@@ -115,7 +116,7 @@ uint8_t ppu_read(uint16_t ppu_register) {
 			return result;
 		}
 	}
-	fprintf(stdout, "    ppu_read %04X %04X %04X\n", ppu_register, ppu_addr, ppu_addr & 0x3FF);
+	fprintf(stdout, "    ppu_read %04X %X %04X %04X\n", ppu_register, ppu_register & 0x7, ppu_addr, ppu_addr & 0x3FF);
 	return 0x00;
 }
 
@@ -127,7 +128,8 @@ void ppu_write(uint16_t ppu_register, uint8_t data) {
 		ctrl.background_pattern_table_index = (data & 0x10) >> 4;
 		ctrl.sprite_pattern_table_index = (data & 0x08) >> 3;
 		ctrl.address_increment = (data & 0x04) ? VERTICAL : HORIZONTAL;
-		ctrl.base_nametable_index = (data & 0x03);
+		ctrl.preset_nametable_index = (data & 0x03);
+		fprintf(stdout, "ppu_write %d\n", ctrl.preset_nametable_index);
 		return;
 	}
 	// PPUMASK
@@ -199,7 +201,28 @@ static void draw_pixel(void) {
 	unsigned quadrant = ((scroll.y & 0x10) >> 2) | ((scroll.x & 0x10) >> 3);
 	unsigned pal_addr = ((attribute >> quadrant) << 2) & 0x0C;
 
-	if (mask.show_background) {
+	if (mask.show_sprites) {
+		uint8_t x = _pixel & 0xFF, y = (_pixel >> 8) & 0xFF;
+		for (int sprite = 0; sprite < 256; sprite += 4) {
+			if (oam[sprite] >= 0xEF) // bellow the screen
+				continue;
+			if ((oam[sprite] + 0) > y || (oam[sprite] + 7) < y)
+				continue;
+			if ((oam[sprite + 3]) > x || (oam[sprite + 3] + 7) < x)
+				continue;
+			int oam_table_entry = oam[sprite + 1];
+			uint16_t pix = 0x0000 | (ctrl.sprite_pattern_table_index << 12) | (oam_table_entry << 4) | (y - oam[sprite]);
+			uint8_t pixel_pos = (oam[sprite + 2] & 0x40) ? (0x01 << (x - oam[sprite + 3])) : (0x80 >> (x - oam[sprite + 3]));
+
+			int a = chr[pix] & pixel_pos;
+			int b = chr[pix | 0x0008] & pixel_pos;
+			pal_addr += (a ? 1 : 0) + (b ? 2 : 0);
+			if ((a || b) && ! sprite) status.sprite_zero_hit = true;
+			if ((a || b) && ! sprite) fprintf(stdout, "zero %d\n", _pixel);
+			break;
+		}
+	}
+	if (mask.show_background && !(pal_addr & 0x03)) {
 		uint16_t chr_index = current_nametable[(scroll.coarse_y << 5) + scroll.coarse_x];
 		uint16_t pix = 0x0000 | (ctrl.background_pattern_table_index << 12) | (chr_index << 4) | scroll.fine_y;
 		int a = chr[pix] & (0x80 >> scroll.fine_x);
@@ -214,9 +237,14 @@ static void draw_pixel(void) {
 
 static void increment_vertical_scroll(void) {
 	//fprintf(stdout, "increment_vertical_scroll %d %d\n", scroll.coarse_y, scroll.fine_y);
-	current_nametable = nametable[ctrl.base_nametable_index];
 	scroll.x = scroll.preset_x;
-	scroll.y++;
+	ctrl.base_nametable_index = (ctrl.base_nametable_index & 0x2) | (ctrl.preset_nametable_index & 0x1);
+	if (++scroll.y == 240) {
+		scroll.y = 0;
+		ctrl.base_nametable_index ^= 0x2;
+		fprintf(stdout, "increment_vertical_scroll %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
+	}
+	current_nametable = nametable[ctrl.base_nametable_index];
 }
 
 static void idle(void) {
@@ -241,11 +269,14 @@ static void prepare_next_frame(void) {
 	tick = (rendering_enabled && odd_frame) ? 1 : 0;
 	odd_frame = !odd_frame;
 	_pixel = 0;
+	status.sprite_zero_hit = false;
+	ctrl.base_nametable_index = ctrl.preset_nametable_index;
 	current_nametable = nametable[ctrl.base_nametable_index];
 	scroll.x = scroll.preset_x;
-	scroll.y = 0;
+	scroll.y = scroll.preset_y;
 	display_frame(frame_buffer);
 	sync();
+	fprintf(stdout, "prepare_next_frame %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
 }
 
 void ppu_setup(void) {
