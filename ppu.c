@@ -73,19 +73,6 @@ static struct {
 // 0x2006 PPUADDR
 static uint16_t ppu_addr;
 
-void map_character_data(uint8_t *chr_data, uint8_t mirroring) {
-	chr = chr_data;
-	nametable[0] = &vram[0x000];
-	nametable[3] = &vram[0x400];
-	if (mirroring) { // == vertical
-		nametable[1] = &vram[0x400];
-		nametable[2] = &vram[0x000];
-	} else {
-		nametable[1] = &vram[0x000];
-		nametable[2] = &vram[0x400];
-	}
-}
-
 uint8_t ppu_read(uint16_t ppu_register) {
 	// PPUSTATUS
 	if (ppu_register == 0x2002) {
@@ -279,7 +266,11 @@ static void prepare_next_frame(void) {
 	fprintf(stdout, "prepare_next_frame %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
 }
 
-void ppu_setup(void) {
+void ppu_setup(uint8_t *chr_data, uint8_t chr_banks, uint8_t mirroring) {
+	if (chr_banks != 1) {
+		puts("Unsupported ROM");
+		exit(1);
+	}
 	for (register uint_fast32_t i = 0; i < 89342; i++) {
 		if (i < 81840) {
 			if ((i % 341 < 257) && (i % 341))
@@ -295,6 +286,17 @@ void ppu_setup(void) {
 	full_frame[82182] = set_vblank_flag;
 	full_frame[89002] = unset_vblank_flag;
 	full_frame[89341] = prepare_next_frame;
+
+	chr = chr_data;
+	nametable[0] = &vram[0x000];
+	nametable[3] = &vram[0x400];
+	if (mirroring) { // == vertical
+		nametable[1] = &vram[0x400];
+		nametable[2] = &vram[0x000];
+	} else {
+		nametable[1] = &vram[0x000];
+		nametable[2] = &vram[0x400];
+	}
 	current_nametable = nametable[0];
 }
 

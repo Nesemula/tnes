@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include "common.h"
 
+#define getchar 0&&getchar
+#define puts 0&&puts
+#define printf 0&&printf
+
 unsigned short dma_address;
 unsigned short dma_cycle;
 unsigned short dma_write_cycle;
@@ -11,14 +15,17 @@ unsigned char *PRG;
 unsigned char RAM[0x800];
 unsigned char *stack = &RAM[0x100];
 
-void map_program_data(unsigned char *prg_data) {
+uint16_t prg_mask;
+
+void cpu_setup(uint8_t *prg_data, uint8_t prg_banks) {
 	PRG = prg_data;
+	prg_mask = (prg_banks > 1) ? 0x7FFF : 0x3FFF;
 }
 
 unsigned char read_memory(unsigned short address) {
 	if (address > 0x7FFF) {
-		printf("  read_memory  %04X -> PRG %04X -> %02X\n", address, address & 0x7FFF, PRG[address & 0x7FFF]);
-		return PRG[address & 0x7FFF];
+		printf("  read_memory  %04X -> PRG %04X -> %02X\n", address, address & prg_mask, PRG[address & prg_mask]);
+		return PRG[address & prg_mask];
 	}
 	if (address < 0x2000) {
 		printf("  read_memory  %04X -> RAM %04X -> %02X\n", address, address & 0x07FF, RAM[address & 0x07FF]);

@@ -5,6 +5,10 @@
 #include "common.h"
 #include "debug.h"
 
+#define getchar 0&&getchar
+#define puts 0&&puts
+#define printf 0&&printf
+
 #define effective_address    effective_addr.full
 #define effective_address_hi effective_addr.part.high
 #define effective_address_lo effective_addr.part.low
