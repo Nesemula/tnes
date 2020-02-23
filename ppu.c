@@ -86,14 +86,7 @@ uint8_t ppu_read(uint16_t ppu_register) {
 		static uint8_t read_buffer = 0x00;
 		uint8_t result = read_buffer;
 		if (ppu_addr >= 0x2000 && ppu_addr < 0x3000) {
-			if (ppu_addr < 0x2400)
-				read_buffer = nametable[0][ppu_addr & 0x03FF];
-			else if (ppu_addr < 0x2800)
-				read_buffer = nametable[1][ppu_addr & 0x03FF];
-			else if (ppu_addr < 0x2C00)
-				read_buffer = nametable[2][ppu_addr & 0x03FF];
-			else // ppu_addr < 0x3000
-				read_buffer = nametable[3][ppu_addr & 0x03FF];
+			read_buffer = nametable[(ppu_addr & 0x0C00) >> 10][ppu_addr & 0x03FF];
 			ppu_addr += ctrl.address_increment;
 			return result;
 		}
@@ -159,19 +152,15 @@ void ppu_write(uint16_t ppu_register, uint8_t data) {
 	// PPUDATA
 	if (ppu_register == 0x2007) {
 		if (ppu_addr >= 0x2000 && ppu_addr < 0x3000) {
-			if (ppu_addr < 0x2400)
-				nametable[0][ppu_addr & 0x03FF] = data;
-			else if (ppu_addr < 0x2800)
-				nametable[1][ppu_addr & 0x03FF] = data;
-			else if (ppu_addr < 0x2C00)
-				nametable[2][ppu_addr & 0x03FF] = data;
-			else // ppu_addr < 0x3000
-				nametable[3][ppu_addr & 0x03FF] = data;
+			nametable[(ppu_addr & 0x0C00) >> 10][ppu_addr & 0x03FF] = data;
 			ppu_addr += ctrl.address_increment;
 			return;
 		}
 		if (ppu_addr >= 0x3F00 && ppu_addr < 0x3F20) {
-			palette[ppu_addr & 0x001F] = data;
+			if (ppu_addr & 0x0003)
+				palette[ppu_addr & 0x001F] = data;
+			else
+				palette[ppu_addr & 0x001F] = palette[ppu_addr & (0x001F ^ 0x0010)] = data;
 			ppu_addr += ctrl.address_increment;
 			return;
 		}
@@ -263,14 +252,13 @@ static void prepare_next_frame(void) {
 	scroll.y = scroll.preset_y;
 	display_frame(frame_buffer);
 	sync();
-	fprintf(stdout, "prepare_next_frame %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
+	///fprintf(stdout, "prepare_next_frame %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
 }
 
 void ppu_setup(uint8_t *chr_data, uint8_t chr_banks, uint8_t mirroring) {
-	if (chr_banks != 1) {
-		puts("Unsupported ROM");
-		exit(1);
-	}
+	if (chr_banks != 1)
+		puts("Unsupported CHR");
+
 	for (register uint_fast32_t i = 0; i < 89342; i++) {
 		if (i < 81840) {
 			if ((i % 341 < 257) && (i % 341))
