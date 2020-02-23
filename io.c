@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include "SDL2/SDL.h"
+#include "common.h"
 
 static int thread_sdl(void *arg);
 
@@ -195,6 +196,9 @@ static int thread_sdl(void *arg) {
 				SDL_RenderPresent(renderer);
 				SDL_UnlockMutex(mutex);
 			}
+			if (event.type == SDL_KEYUP)
+				if (event.key.keysym.sym == SDLK_o)
+					cpu_reset();
 		} 
 	}
 	SDL_DestroyRenderer(renderer);

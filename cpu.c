@@ -286,6 +286,12 @@ void cpu_hang(void) {
 	next_op = &dma_setup;
 }
 
+void cpu_reset(void) {
+	fprintf(stdout, "CPU reset\n");
+	vector = RESET_VECTOR;
+	next_op = &reset;
+}
+
 void cpu_interrupt(void) {
 	next_op = &nmi_setup;
 	flag.b = false;
