@@ -103,13 +103,13 @@ uint8_t ppu_read(uint16_t ppu_register) {
 void ppu_write(uint16_t ppu_register, uint8_t data) {
 	// PPUCTRL
 	if (ppu_register == 0x2000) {
-		ctrl.nmi_enabled = (data & 0x80) >> 7;
-		ctrl.sprite_double_size = (data & 0x20) >> 5;
-		ctrl.background_pattern_table_index = (data & 0x10) >> 4;
-		ctrl.sprite_pattern_table_index = (data & 0x08) >> 3;
+		ctrl.nmi_enabled = (data & 0x80);
+		ctrl.sprite_double_size = (data & 0x20);
+		ctrl.background_pattern_table_index = (data & 0x10);
+		ctrl.sprite_pattern_table_index = (data & 0x08);
 		ctrl.address_increment = (data & 0x04) ? VERTICAL : HORIZONTAL;
 		ctrl.preset_nametable_index = (data & 0x03);
-		fprintf(stdout, "ppu_write %d\n", ctrl.preset_nametable_index);
+		///fprintf(stdout, "ppu_write %d\n", ctrl.preset_nametable_index);
 		return;
 	}
 	// PPUMASK
@@ -171,42 +171,74 @@ void ppu_write(uint16_t ppu_register, uint8_t data) {
 static unsigned short _pixel;
 static unsigned int tick;
 
+#define SPRITE_TOP        (oam[sprite * 4 + 0] + 1)
+#define SPRITE_BOTTOM     (oam[sprite * 4 + 0] + 8)
+#define TILESET_ENTRY     (oam[sprite * 4 + 1])
+#define FLIP_VERTICALLY   (oam[sprite * 4 + 2] & 0x80)
+#define FLIP_HORIZONTALLY (oam[sprite * 4 + 2] & 0x40)
+#define BEHIND_BACKGROUND (oam[sprite * 4 + 2] & 0x20)
+#define PALLETE_COLOR     (oam[sprite * 4 + 2] & 0x03)
+#define SPRITE_LEFT       (oam[sprite * 4 + 3] + 0)
+#define SPRITE_RIGHT      (oam[sprite * 4 + 3] + 7)
+
 static void draw_pixel(void) {
 	//fprintf(stdout, "draw_pixel %d\n", _pixel);
-	unsigned attribute = current_nametable[0x03C0 + (((scroll.y & 0xE0) >> 2) | (scroll.x >> 5))];
-	unsigned quadrant = ((scroll.y & 0x10) >> 2) | ((scroll.x & 0x10) >> 3);
-	unsigned pal_addr = ((attribute >> quadrant) << 2) & 0x0C;
+	bool possible_sprite_zero_hit = false;
+	bool background_has_priority = true;
+	uint_fast8_t pixel_color = 0x00;
+	uint_fast8_t default_color = 0x00;
 
 	if (mask.show_sprites) {
-		uint8_t x = _pixel & 0xFF, y = (_pixel >> 8) & 0xFF;
-		for (int sprite = 0; sprite < 256; sprite += 4) {
-			if (oam[sprite] >= 0xEF) // bellow the screen
+		uint8_t x = _pixel & 0xFF, y = _pixel >> 8;
+		for (uint_fast8_t sprite = 0; sprite < 64; sprite++) {
+			if (SPRITE_TOP > y || SPRITE_BOTTOM < y)
 				continue;
-			if ((oam[sprite] + 0) > y || (oam[sprite] + 7) < y)
+			if (SPRITE_LEFT > x || SPRITE_RIGHT < x)
 				continue;
-			if ((oam[sprite + 3]) > x || (oam[sprite + 3] + 7) < x)
-				continue;
-			int oam_table_entry = oam[sprite + 1];
-			uint16_t pix = 0x0000 | (ctrl.sprite_pattern_table_index << 12) | (oam_table_entry << 4) | (y - oam[sprite]);
-			uint8_t pixel_pos = (oam[sprite + 2] & 0x40) ? (0x01 << (x - oam[sprite + 3])) : (0x80 >> (x - oam[sprite + 3]));
+			uint8_t vertical_way = FLIP_VERTICALLY ? (SPRITE_BOTTOM - y) : (y - SPRITE_TOP);
+			uint16_t pix = (ctrl.sprite_pattern_table_index << 12) | (TILESET_ENTRY << 4) | vertical_way;
+			uint8_t pixel_pos = 0x01 << (FLIP_HORIZONTALLY ? (x - SPRITE_LEFT) : (SPRITE_RIGHT - x));
 
-			int a = chr[pix] & pixel_pos;
-			int b = chr[pix | 0x0008] & pixel_pos;
-			pal_addr += (a ? 1 : 0) + (b ? 2 : 0);
-			if ((a || b) && ! sprite) status.sprite_zero_hit = true;
-			if ((a || b) && ! sprite) fprintf(stdout, "zero %d\n", _pixel);
-			break;
+			uint_fast8_t opaque_pixel = (chr[pix] & pixel_pos) ? 0x01 : 0x00;
+			opaque_pixel |= (chr[pix | 0x0008] & pixel_pos) ? 0x02 : 0x00;
+
+			if (opaque_pixel) {
+				pixel_color = 0x10 | (PALLETE_COLOR << 2) | opaque_pixel;
+				background_has_priority = BEHIND_BACKGROUND;
+				if (!status.sprite_zero_hit && sprite == 0)
+					possible_sprite_zero_hit = true;
+				break;
+			}
 		}
 	}
-	if (mask.show_background && !(pal_addr & 0x03)) {
-		uint16_t chr_index = current_nametable[(scroll.coarse_y << 5) + scroll.coarse_x];
-		uint16_t pix = 0x0000 | (ctrl.background_pattern_table_index << 12) | (chr_index << 4) | scroll.fine_y;
-		int a = chr[pix] & (0x80 >> scroll.fine_x);
-		int b = chr[pix | 0x0008] & (0x80 >> scroll.fine_x);
-		pal_addr += (a ? 1 : 0) + (b ? 2 : 0);
+
+	if (background_has_priority) {
+		uint_fast8_t attribute = current_nametable[0x03C0 + (((scroll.y & 0xE0) >> 2) | (scroll.x >> 5))];
+		uint_fast8_t quadrant = ((scroll.y & 0x10) >> 2) | ((scroll.x & 0x10) >> 3);
+		default_color = ((attribute >> quadrant) << 2) & 0x0C;
 	}
 
-	frame_buffer[_pixel++] = palette[pal_addr];
+	if (mask.show_background) {
+		if (background_has_priority || possible_sprite_zero_hit) {
+			uint_fast8_t chr_index = current_nametable[(scroll.coarse_y << 5) + scroll.coarse_x];
+			uint_fast16_t pix = 0x0000 | (ctrl.background_pattern_table_index << 12) | (chr_index << 4) | scroll.fine_y;
+			uint_fast8_t opaque_pixel = (chr[pix] & (0x80 >> scroll.fine_x)) ? 0x01 : 0x00;
+			opaque_pixel |= (chr[pix | 0x0008] & (0x80 >> scroll.fine_x)) ? 0x02 : 0x00;
+
+			if (opaque_pixel) {
+				if (possible_sprite_zero_hit) {
+					status.sprite_zero_hit = true;
+					//puts("SPRITE_ZERO_HIT_DETECTED");
+				}
+				if (background_has_priority)
+					pixel_color = default_color | opaque_pixel;
+			}
+		}
+	} else {
+		pixel_color = default_color;
+	}
+
+	frame_buffer[_pixel++] = palette[pixel_color];
 	if (!++scroll.x)
 		current_nametable = nametable[ctrl.base_nametable_index ^ 0x1];
 }
@@ -218,7 +250,7 @@ static void increment_vertical_scroll(void) {
 	if (++scroll.y == 240) {
 		scroll.y = 0;
 		ctrl.base_nametable_index ^= 0x2;
-		fprintf(stdout, "increment_vertical_scroll %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
+		///fprintf(stdout, "increment_vertical_scroll %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
 	}
 	current_nametable = nametable[ctrl.base_nametable_index];
 }
