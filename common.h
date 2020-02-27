@@ -3,6 +3,7 @@ void cpu_setup(uint8_t *prg_data, uint8_t prg_banks);
 void cpu_exec(void);
 void cpu_interrupt(void);
 void cpu_hang(void);
+void cpu_reset(void);
 
 // PPU
 void ppu_setup(uint8_t *chr_data, uint8_t chr_banks, uint8_t mirroring);
