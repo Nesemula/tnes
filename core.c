@@ -9,20 +9,20 @@
 #define CHR_BANK_SIZE 0x2000
 #define HEADER_OFFSET 0x10
 
-static void print_crc32(uint8_t *data, size_t length) {
+static uint32_t calculate_crc32(uint8_t *data, size_t length) {
 	uint32_t crc = 0xFFFFFFFF;
 
 	for (size_t i = 0; i < length; i++) {
 		crc ^= data[i];
 
-		for (int i = 0; i < 8; i++) {
+		for (uint_fast8_t i = 0; i < 8; i++) {
 			if (crc & 1)
 				crc = ((crc >> 1) ^ 0xEDB88320);
 			else
 				crc >>= 1;
 		}
 	}
-	printf("CRC32 -> %08X\n", ~crc);
+	return ~crc;
 }
 
 int main(int argc, char *argv[]) {
@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
 	uint8_t prg_banks = rom_data[4];
 	uint8_t chr_banks = rom_data[5];
 	uint8_t mirroring = rom_data[6] & 0x01;
+	uint8_t mapper = (rom_data[6] >> 4) | (rom_data[7] & 0xF0);
 
 	// basic header and file size validation
 	if (rom_data[0] != 'N' || rom_data[1] != 'E' || rom_data[2] != 'S' || rom_data[3] != 0x1A) {
@@ -82,9 +83,11 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	printf("CHR 8k banks x%d \nPRG 16k banks x%d\n", chr_banks, prg_banks);
+	printf("CHR 8k banks x%d\n", chr_banks);
+	printf("PRG 16k banks x%d\n", prg_banks);
 	printf("CHR mirroring -> %s\n", mirroring ? "vertical" : "horizontal");
-	print_crc32(&rom_data[HEADER_OFFSET], rom_size - HEADER_OFFSET);
+	printf("iNES mapper -> %d\n", mapper);
+	printf("CRC32 -> %08X\n", calculate_crc32(&rom_data[HEADER_OFFSET], rom_size - HEADER_OFFSET));
 
 	cpu_setup(&rom_data[HEADER_OFFSET], prg_banks);
 	ppu_setup(chr_banks ? &rom_data[prg_banks * PRG_BANK_SIZE + HEADER_OFFSET] : chr_ram, chr_banks, mirroring);
