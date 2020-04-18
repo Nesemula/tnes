@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O3 -Wall -Wextra -pedantic -march=native -std=c11 -flto
+CFLAGS = -O3 -Wall -Wextra -pedantic -march=native -std=c11 -flto -Winline
 
 funestus : obj/core.o obj/cpu.o obj/ppu.o obj/memory.o obj/io.o -lSDL2 -lSDL2main
 	$(CC) -s -flto $^ -o $@

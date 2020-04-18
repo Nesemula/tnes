@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include "common.h"
 
+static unsigned int tick;
+#define dbg(w, x, y, z) printf("\r" w, x, y, z)
+
 enum direction { HORIZONTAL = 1, VERTICAL = 32 };
 
 typedef void render(void);
@@ -109,7 +112,9 @@ void ppu_write(uint16_t ppu_register, uint8_t data) {
 		ctrl.sprite_pattern_table_index = (data & 0x08);
 		ctrl.address_increment = (data & 0x04) ? VERTICAL : HORIZONTAL;
 		ctrl.preset_nametable_index = (data & 0x03);
-		///fprintf(stdout, "ppu_write %d\n", ctrl.preset_nametable_index);
+		//if (!status.sprite_zero_hit)
+		if (tick >= 81840)
+			fprintf(stdout, "ppu_write %d %d\n", ctrl.preset_nametable_index, tick);
 		return;
 	}
 	// PPUMASK
@@ -169,7 +174,6 @@ void ppu_write(uint16_t ppu_register, uint8_t data) {
 }
 
 static unsigned short _pixel;
-static unsigned int tick;
 
 #define SPRITE_TOP        (oam[sprite * 4 + 0] + 1)
 #define SPRITE_BOTTOM     (oam[sprite * 4 + 0] + 8)
@@ -206,7 +210,8 @@ static void draw_pixel(void) {
 				pixel_color = 0x10 | (PALLETE_COLOR << 2) | opaque_pixel;
 				background_has_priority = BEHIND_BACKGROUND;
 				if (!status.sprite_zero_hit && sprite == 0)
-					possible_sprite_zero_hit = true;
+					//possible_sprite_zero_hit = true;
+					status.sprite_zero_hit = true;
 				break;
 			}
 		}
@@ -253,6 +258,7 @@ static void increment_vertical_scroll(void) {
 		///fprintf(stdout, "increment_vertical_scroll %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
 	}
 	current_nametable = nametable[ctrl.base_nametable_index];
+	//dbg("prepare_next_frame NT %d | X %03d | Y %03d", ctrl.base_nametable_index, scroll.preset_x, scroll.preset_y);
 }
 
 static void idle(void) {
@@ -285,6 +291,7 @@ static void prepare_next_frame(void) {
 	display_frame(frame_buffer);
 	sync();
 	///fprintf(stdout, "prepare_next_frame %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
+	//dbg("prepare_next_frame NT %d | X %03d | Y %03d", ctrl.base_nametable_index, scroll.x, scroll.y);
 }
 
 void ppu_setup(uint8_t *chr_data, uint8_t chr_banks, uint8_t mirroring) {

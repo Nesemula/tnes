@@ -5,10 +5,6 @@
 #include "common.h"
 #include "debug.h"
 
-#define getchar 0&&getchar
-#define puts 0&&puts
-#define printf 0&&printf
-
 #define effective_address    effective_addr.full
 #define effective_address_hi effective_addr.part.high
 #define effective_address_lo effective_addr.part.low
@@ -300,13 +296,10 @@ void cpu_interrupt(void) {
 void cpu_exec(void) {
 	update_PC();
 	current[step++]();
-#ifdef DBGOUT
-	uint8_t P = group_status_flags();
+
+	uint8_t P = dbug ? group_status_flags() : 0x00;
 	printf(">> A %02X, X %02X, Y %02X, S %02X, P %02X, PC %04X, %c%c%c%c%c%c%c%c #%llu\n", A, X, Y, S, P, PC,
 		P & 0x80 ? 'n' : '.', P & 0x40 ? 'v' : '.', P & 0x20 ? 'x' : '.', P & 0x10 ? 'b' : '.',
 			P & 0x08 ? 'd' : '.', P & 0x04 ? 'i' : '.', P & 0x02 ? 'z' : '.', P & 0x01 ? 'c' : '.', ++counter);
-#else
-	counter++;
-#endif
 }
 

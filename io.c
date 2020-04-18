@@ -4,6 +4,7 @@
 #include "SDL2/SDL.h"
 #include "common.h"
 
+bool dbug;
 static int thread_sdl(void *arg);
 
 SDL_mutex *mutex;
@@ -196,9 +197,12 @@ static int thread_sdl(void *arg) {
 				SDL_RenderPresent(renderer);
 				SDL_UnlockMutex(mutex);
 			}
-			if (event.type == SDL_KEYUP)
+			if (event.type == SDL_KEYUP) {
 				if (event.key.keysym.sym == SDLK_o)
 					cpu_reset();
+				if (event.key.keysym.sym == SDLK_k)
+					dbug ^= true;
+			}
 		} 
 	}
 	SDL_DestroyRenderer(renderer);

@@ -23,3 +23,14 @@ unsigned char read_memory(unsigned short address);
 void write_memory(unsigned short address, unsigned char data);
 int memory_auto_transfer(void);
 
+// Debug
+extern bool dbug;
+
+#ifdef RELEASE
+#define puts 0&&puts
+#define printf 0&&printf
+#else
+#define puts if(dbug)puts
+#define printf if(dbug)printf
+#endif
+
