@@ -7,14 +7,20 @@
 bool dbug;
 static int thread_sdl(void *arg);
 
-SDL_mutex *mutex;
 SDL_Thread *thread;
 SDL_Window *sdlWindow;
 SDL_Renderer *renderer;
 SDL_Texture *sdlTexture;
+static Uint32 FULFILLED_FRAME;
+
+#define BUFFER_COUNT 2
 
 static const Uint8 *key_state;
-static Uint32 pix[256 * 240];
+static Uint32 sdl_output[0xF000]; // 256x240
+static Uint8 internal_buffer[BUFFER_COUNT][0xF000]; // 256x240
+
+uint8_t *frame_buffer;
+static uint8_t current_buffer;
 
 static void SetSDLIcon(SDL_Window* window) {
 	Uint32 color[6] = { 0x00000000, 0x000000FF, 0xD0A000FF, 0xF8D800FF, 0xA07800FF, 0xF8F8F8FF };
@@ -69,7 +75,9 @@ static void SetSDLIcon(SDL_Window* window) {
 }
 
 void io_setup(void) {
+	frame_buffer = internal_buffer[current_buffer];
 	key_state = SDL_GetKeyboardState(NULL);
+	FULFILLED_FRAME = SDL_RegisterEvents(1);
 	thread = SDL_CreateThread(thread_sdl, "thread_sdl", (void *) NULL);
 }
 
@@ -104,18 +112,16 @@ void reset_input(void) {
 	key_count = 0;
 }
 
-unsigned char *fframe;
-void display_frame(unsigned char *frame) {
-	fframe = frame;
-	SDL_LockMutex(mutex);
-	SDL_Event sdlevent;
-	sdlevent.type = SDL_TEXTINPUT;
-	SDL_PushEvent(&sdlevent);
+void display_frame(void) {
+	SDL_Event event;
+	SDL_zero(event);
+	event.type = FULFILLED_FRAME;
+	event.user.data1 = frame_buffer;
+	frame_buffer = internal_buffer[current_buffer ^= 1];
+	SDL_PushEvent(&event);
 }
 
 void sync(void) {
-	static Uint32 last_sync = 0;
-	SDL_LockMutex(mutex);
 #ifdef BENCHMARK
 	static Uint32 ticks = 0;
 	static Uint32 frames = 0;
@@ -130,12 +136,12 @@ void sync(void) {
 	}
 	frames++;
 #else
+	static Uint32 last_sync = 0;
 	Uint32 passed = (SDL_GetTicks() - last_sync);
 	if (passed < 16)
 		SDL_Delay(16 - passed);
-#endif
 	last_sync = SDL_GetTicks();
-	SDL_UnlockMutex(mutex);
+#endif
 }
 
 void generate_noise(void) {
@@ -154,7 +160,7 @@ void generate_noise(void) {
 			else color = rand() % 175;
 		}
 		run -= 1;
-		pix[i] = color | (color << 8) | (color << 16);
+		sdl_output[i] = color | (color << 8) | (color << 16);
 		i++;
 	}
 	band += rand() % (5 * 256);
@@ -168,7 +174,6 @@ static int thread_sdl(void *arg) {
 	
 	SetSDLIcon(sdlWindow);
 	renderer = SDL_CreateRenderer(sdlWindow, -1, 0);
-	mutex = SDL_CreateMutex();
 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
@@ -187,15 +192,16 @@ static int thread_sdl(void *arg) {
 				go_on = 0;
 				break;
 			}
-			if (event.type == SDL_TEXTINPUT) {
-				//generate_noise();
+			if (event.type == FULFILLED_FRAME) {
+				uint8_t *fullfilled_frame = (uint8_t *) event.user.data1;
 				for (int i = 0; i < 0xF000; i++)
-					pix[i] = argb[fframe[i]];
-				SDL_UpdateTexture(sdlTexture, NULL, pix, 256 * 4);
+					sdl_output[i] = argb[fullfilled_frame[i]];
+#ifndef BENCHMARK
+				SDL_UpdateTexture(sdlTexture, NULL, sdl_output, 256 * 4);
 				SDL_RenderClear(renderer);
 				SDL_RenderCopy(renderer, sdlTexture, NULL, NULL);
 				SDL_RenderPresent(renderer);
-				SDL_UnlockMutex(mutex);
+#endif
 			}
 			if (event.type == SDL_KEYUP) {
 				if (event.key.keysym.sym == SDLK_o)

@@ -14,7 +14,7 @@ uint8_t ppu_read(uint16_t ppu_register);
 // IO
 void sync(void);
 void io_setup(void);
-void display_frame(unsigned char *frame);
+void display_frame(void);
 unsigned char get_input(void);
 void reset_input(void);
 

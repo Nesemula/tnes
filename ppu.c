@@ -9,12 +9,12 @@ static unsigned int tick;
 
 enum direction { HORIZONTAL = 1, VERTICAL = 32 };
 
+extern uint8_t *frame_buffer;
+
 typedef void render(void);
 static render *full_frame[0x015CFE]; // 341x262
-
 static uint8_t *nametable[4];
 static uint8_t *current_nametable;
-static uint8_t frame_buffer[0xF000]; // 256x240
 static uint8_t *chr; // 0x2000
 static uint8_t vram[0x800]; // two nametables
 static uint8_t oam[0x100];
@@ -288,7 +288,7 @@ static void prepare_next_frame(void) {
 	current_nametable = nametable[ctrl.base_nametable_index];
 	scroll.x = scroll.preset_x;
 	scroll.y = scroll.preset_y;
-	display_frame(frame_buffer);
+	display_frame();
 	sync();
 	///fprintf(stdout, "prepare_next_frame %d %d %d\n", ctrl.base_nametable_index, scroll.x, scroll.y);
 	//dbg("prepare_next_frame NT %d | X %03d | Y %03d", ctrl.base_nametable_index, scroll.x, scroll.y);
